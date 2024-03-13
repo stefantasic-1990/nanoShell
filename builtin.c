@@ -1,3 +1,10 @@
+#include <stdio.h>
+#include <unistd.h>
+
+int xsh_num_builtins();
+int xsh_cd(char **args);
+int xsh_help(char **args);
+int xsh_exit(char **args);
 
 /*
     List of builtin commands and list of corresponding function pointers

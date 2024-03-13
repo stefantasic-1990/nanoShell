@@ -1,3 +1,10 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include "builtin.h"
+
 #define XSH_LINE_BUFFERSIZE 1024
 #define XSH_TOKEN_BUFFERSIZE 64
 #define XSH_TOKEN_DELIMITERS " \t\r\n\a"
@@ -96,7 +103,7 @@ char *xsh_read_line(void)
         exit(EXIT_FAILURE);
     }
 
-    while (true) {
+    while (1) {
         // Read a character
         input_char = getchar();
 
