@@ -10,11 +10,6 @@
 #define XSH_TOKEN_BUFFERSIZE 64
 #define XSH_TOKEN_DELIMITERS " \t\r\n\a"
 
-// Command history global variables
-int cmdhis_buffersize = XSH_CMD_HISTORY_BUFFERSIZE
-int cmdhis_position = 0
-char **cmdhis = malloc(cmdhis_buffersize * sizeof(char*));
-
 int xsh_launch(char **args)
 {
     pid_t pid, wpid;
@@ -114,12 +109,15 @@ char *xsh_read_line(void)
         input_char = getchar();
 
         // If up button is pressed store last command in history into buffer
+        //buffer = cmdhis[cmdhis_position];
 
         // If down button is pressed store next command in history into buffer
 
-        // If we hit EOF, replace it with a null character and return
+        // If we hit EOF, replace it with a null character, store into history and return
         if (input_char == EOF || input_char == '\n') {
             buffer[position] = '\0';
+            // cmdhis[cmdhis_position] = buffer;
+            // cmdhis_position++;
             return buffer;
         // Else add input character to string
         } else {
@@ -145,9 +143,14 @@ int main (int argc, char **argv)
     char **args;
     int status;
 
-    // load config files
+    // Initialize command history variables
+    int cmdhis_buffersize = XSH_CMD_HISTORY_BUFFERSIZE;
+    int cmdhis_position = 0;
+    char **cmdhis = malloc(cmdhis_buffersize * sizeof(char*));
 
-    // run command loop
+    // Load config files
+
+    // Run command loop
     do {
       printf(":: ");
       line = xsh_read_line();
