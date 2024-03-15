@@ -74,16 +74,16 @@ char **xsh_tokenize_line(char *line)
         position++;
 
     // If we have exceeded the buffer, reallocate with more memory
-    if (position >= buffersize) {
-        buffersize += XSH_TOKEN_BUFFERSIZE;
-        tokens = realloc(tokens, buffersize * sizeof(char*));
-        if (!tokens) {
-            fprintf(stderr, "xsh: memory allocation error\n");
-            exit(EXIT_FAILURE);
+        if (position >= buffersize) {
+            buffersize += XSH_TOKEN_BUFFERSIZE;
+            tokens = realloc(tokens, buffersize * sizeof(char*));
+            if (!tokens) {
+                fprintf(stderr, "xsh: memory allocation error\n");
+                exit(EXIT_FAILURE);
+            }
         }
-    }
-        // Get next token
-        token = strtok(NULL, XSH_TOKEN_DELIMITERS);
+            // Get next token
+            oken = strtok(NULL, XSH_TOKEN_DELIMITERS);
     }
 
     tokens[position] = NULL;
@@ -136,7 +136,7 @@ int main (int argc, char **argv)
     int status;
 
     // Load config files
-    
+
     // Run command loop
     do {
       printf(":: ");
