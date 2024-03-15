@@ -136,6 +136,7 @@ int main (int argc, char **argv)
     int status;
 
     // Load config files
+    
     // Run command loop
     do {
       printf(":: ");
