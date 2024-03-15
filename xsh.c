@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <limits.h>
 #include "builtin.h"
 
 #define XSH_LINE_BUFFERSIZE 1024
@@ -82,8 +83,10 @@ char **xsh_tokenize_line(char *line)
                 exit(EXIT_FAILURE);
             }
         }
-            // Get next token
-            oken = strtok(NULL, XSH_TOKEN_DELIMITERS);
+
+        // Get next token
+        token = strtok(NULL, XSH_TOKEN_DELIMITERS);
+
     }
 
     tokens[position] = NULL;
@@ -134,18 +137,27 @@ int main (int argc, char **argv)
     char *line;
     char **args;
     int status;
+    char cwd[PATH_MAX];
 
     // Load config files
 
     // Run command loop
     do {
-      printf(":: ");
-      line = xsh_read_line();
-      args = xsh_tokenize_line(line);
-      status = xsh_execute(args);
 
-      free(line);
-      free(args);
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            printf("%s: ", cwd);
+        } else {
+            perror("getcwd() error");
+            return 1;
+        }
+
+        line = xsh_read_line();
+        args = xsh_tokenize_line(line);
+        status = xsh_execute(args);
+
+        free(line);
+        free(args);
+        
     } while (status);
 
     // perform cleanup step
