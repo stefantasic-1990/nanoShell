@@ -6,7 +6,6 @@
 #include "builtin.h"
 
 #define XSH_LINE_BUFFERSIZE 1024
-#define XSH_CMD_HISTORY_BUFFERSIZE 10
 #define XSH_TOKEN_BUFFERSIZE 64
 #define XSH_TOKEN_DELIMITERS " \t\r\n\a"
 
@@ -91,7 +90,7 @@ char **xsh_tokenize_line(char *line)
     return tokens;
 }
 
-char *xsh_read_line(void)
+char *xsh_read_line()
 {
     int buffersize = XSH_LINE_BUFFERSIZE;
     int position = 0;
@@ -108,16 +107,9 @@ char *xsh_read_line(void)
         // Read a character
         input_char = getchar();
 
-        // If up button is pressed store last command in history into buffer
-        //buffer = cmdhis[cmdhis_position];
-
-        // If down button is pressed store next command in history into buffer
-
-        // If we hit EOF, replace it with a null character, store into history and return
+        // If we hit EOF, replace it with a null character and return
         if (input_char == EOF || input_char == '\n') {
             buffer[position] = '\0';
-            // cmdhis[cmdhis_position] = buffer;
-            // cmdhis_position++;
             return buffer;
         // Else add input character to string
         } else {
@@ -142,11 +134,6 @@ int main (int argc, char **argv)
     char *line;
     char **args;
     int status;
-
-    // Initialize command history variables
-    int cmdhis_buffersize = XSH_CMD_HISTORY_BUFFERSIZE;
-    int cmdhis_position = 0;
-    char **cmdhis = malloc(cmdhis_buffersize * sizeof(char*));
 
     // Load config files
 
