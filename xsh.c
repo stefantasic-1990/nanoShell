@@ -144,8 +144,10 @@ int main (int argc, char **argv)
     // Run command loop
     do {
 
+        char *uname = getlogin();
+
         if (getcwd(cwd, sizeof(cwd)) != NULL) {
-            printf("%s: ", cwd);
+            printf("%s@%s: ", uname, cwd);
         } else {
             perror("getcwd() error");
             return 1;
