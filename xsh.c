@@ -4,6 +4,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <limits.h>
+#include <ncurses.h>
 #include "builtin.h"
 
 #define XSH_LINE_BUFFERSIZE 1024
@@ -138,18 +139,20 @@ int main (int argc, char **argv)
     char **args;
     int status;
     char cwd[PATH_MAX];
+    char *uname;
 
-    // Load config files
+    // Perform initiation steps
+    initscr();
 
-    // Run command loop
+    // Run main command loop
     do {
 
         char *uname = getlogin();
 
-        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        if (getlogin() != NULL && getcwd(cwd, sizeof(cwd)) != NULL) {
             printf("%s@%s: ", uname, cwd);
         } else {
-            perror("getcwd() error");
+            perror("xsh error");
             return 1;
         }
 
@@ -162,5 +165,5 @@ int main (int argc, char **argv)
         
     } while (status);
 
-    // perform cleanup step
+    // Perform cleanup steps
 }
