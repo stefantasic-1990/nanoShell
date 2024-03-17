@@ -94,7 +94,7 @@ char **xsh_tokenize_line(char *line)
     return tokens;
 }
 
-char *xsh_read_line()
+char *xsh_get_line()
 {
     int buffersize = XSH_LINE_BUFFERSIZE;
     int position = 0;
@@ -109,7 +109,8 @@ char *xsh_read_line()
 
     while (1) {
         // Read a character
-        input_char = getchar();
+        input_char = getch();
+        printw(" %i", input_char);
 
         // If we hit EOF, replace it with a null character and return
         if (input_char == EOF || input_char == '\n') {
@@ -139,24 +140,25 @@ int main (int argc, char **argv)
     char **args;
     int status;
     char cwd[PATH_MAX];
-    char *uname;
+    char hname[_POSIX_HOST_NAME_MAX];
 
     // Perform initiation steps
     initscr();
+    keypad(stdscr, TRUE);
+    noecho();
+    raw();
 
     // Run main command loop
     do {
 
-        char *uname = getlogin();
-
-        if (getlogin() != NULL && getcwd(cwd, sizeof(cwd)) != NULL) {
-            printf("%s@%s: ", uname, cwd);
+        if (gethostname(hname, sizeof(hname)) != -1 && getcwd(cwd, sizeof(cwd)) != NULL) {
+            printw("%s@%s: ", hname, cwd);
         } else {
             perror("xsh error");
             return 1;
         }
 
-        line = xsh_read_line();
+        line = xsh_get_line();
         args = xsh_tokenize_line(line);
         status = xsh_execute(args);
 
