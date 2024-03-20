@@ -35,10 +35,13 @@ char *tsh_getLine(char* prompt, int promptlen) {
 
         // read-in next character
         read(STDIN_FILENO, &c, 1);
+
+        // handle character
         switch(c) {
             case 13: // enter
                 write(STDOUT_FILENO, "\x1b[1E", sizeof("\x1b[1E"));
                 goto returnLine;
+            case 8: // ctrl+h
             case 127: // backspace
                 if (bufferpos > 0) {
                     memmove(buffer+(bufferpos-1), buffer+bufferpos , bufferlen - bufferpos);
@@ -46,6 +49,16 @@ char *tsh_getLine(char* prompt, int promptlen) {
                     bufferlen--;
                     buffer[bufferlen] = '\0';
                 }
+                break;
+            case 3: // ctrl+c
+                break;
+            case 4:
+                break; // ctrl+d
+            case 20:
+                break; // ctrl+t
+            case 16:
+                break; //
+            case 14:
                 break;
             case 27: // escape character
                 // read-in the next two characters
@@ -61,10 +74,21 @@ char *tsh_getLine(char* prompt, int promptlen) {
                         case 'D':
                             if (bufferpos > 0) { bufferpos--; }
                             break;
+                        // up arrow key
+                        case 'A':
+                            // get previous record in history
+                            break;
+                        // down arrow key
+                        case 'B':
+                            // get next record in history
+                            break;
+                        case 'H':
+                            break;
+                        case 'F':
+                            break;
                     }
                 }
                 break;
-
             default: // store character in buffer
                 if ((promptlen + bufferlen) < ws.ws_col) { 
                     memmove(buffer+bufferpos+1, buffer+bufferpos, bufferlen - bufferpos);
@@ -91,6 +115,7 @@ int enableRawTerminal() {
 
     // check TTY device
     if (!isatty(STDIN_FILENO)) {return -1;} 
+
     // change terminal settings
     modified_settings = terminal_settings;
     modified_settings.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
@@ -99,6 +124,7 @@ int enableRawTerminal() {
     modified_settings.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
     modified_settings.c_cc[VMIN] = 1; 
     modified_settings.c_cc[VTIME] = 0;
+
     // set new terminal settings
     if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&modified_settings) == -1) {return -1;};
 
@@ -132,7 +158,6 @@ int main(int argc, char **argv) {
         if ((line = tsh_getLine(prompt, promptlen)) == NULL) {return -1;}
         //if ((args = tsh_tokenizeLine(line)) == NULL) { return -1; }
         //if (tsh_executeCommand(args) == NULL) { return -1; }
-
     } while (1);
 
     disableRawTerminal();
