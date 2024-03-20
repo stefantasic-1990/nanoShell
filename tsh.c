@@ -97,6 +97,7 @@ int main (int argc, char **argv) {
 
     int status;
     char* line;
+    char** args;
     static struct termios canonical_settings;
     struct termios raw_settings;
 
@@ -121,10 +122,9 @@ int main (int argc, char **argv) {
 
     // Main program loop
     do {
-        if ((line = tsh_getLine(prompt, promptlen)) == NULL) { 
-            return -1; 
-            } else {
-            //write(STDOUT_FILENO, line, sizeof(line));
-        }
-    } while (status);
+        if ((line = tsh_getLine(prompt, promptlen)) == NULL) { return -1; }
+        //if ((args = tsh_tokenizeLine(line)) == NULL) { return -1; }
+        //if (tsh_executeCommand(args) == NULL) { return -1; }
+
+    } while (1);
 }
