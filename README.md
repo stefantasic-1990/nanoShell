@@ -1,4 +1,4 @@
-# tsh: a simple shell in C
+# tsh: a simple shell program in C
 
 ## Motivation
 
@@ -9,6 +9,6 @@ Personal project implementing a basic shell program in C. Motivated by desire to
 These are the features I want the shell to have before I can call it complete.
 
 - [ ] Basic single-line editing mode
-- [ ] Command parsing with quoting and backslash escaping
-- [ ] Persistant command history
+- [ ] Command parsing with quoting and escaping
 - [ ] Command piping and redirection
+- [ ] Persistant command history
