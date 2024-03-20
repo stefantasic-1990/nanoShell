@@ -51,15 +51,15 @@ char *tsh_getLine(char* prompt, int promptlen) {
                 }
                 break;
             case 3: // ctrl+c
+                return NULL;
+            case 4: // ctrl+d
                 break;
-            case 4:
-                break; // ctrl+d
-            case 20:
-                break; // ctrl+t
-            case 16:
-                break; //
-            case 14:
-                break;
+            case 20: // ctrl+t
+                break; 
+            case 16: // ctrl+p
+                break; 
+            case 14: // ctrl+n
+                break; 
             case 27: // escape character
                 // read-in the next two characters
                 if (read(STDOUT_FILENO, eseq, 1) == -1) { break; }
@@ -81,10 +81,6 @@ char *tsh_getLine(char* prompt, int promptlen) {
                         // down arrow key
                         case 'B':
                             // get next record in history
-                            break;
-                        case 'H':
-                            break;
-                        case 'F':
                             break;
                     }
                 }
