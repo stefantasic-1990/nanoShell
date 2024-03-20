@@ -9,59 +9,60 @@
 
 #define TSH_LINEBUFFERSIZE 100
 
+#define KEY_CRETURN
+#define KEY_ERIGHT
+
+struct termios terminal_settings;
+
 char *tsh_getLine(char* prompt, int promptlen) {
-    char c;
-    char eseq[3];
-    struct winsize ws;
     int buffersize = TSH_LINEBUFFERSIZE;
     int bufferpos = 0;
     int bufferlen = 0;
-    char cursorpos[7];
     char* buffer = malloc(sizeof(char) * buffersize);
+    char cursorpos[7];
+    char eseq[3];    
+    char c;
 
+    // get size of terminal window
+    struct winsize ws;
     ioctl(1, TIOCGWINSZ, &ws);
 
     do {
-        // Refresh line and reset cursor
+        // refresh line and reset cursor
+        snprintf(cursorpos, 7, "\x1b[%iG", promptlen + 1 + bufferpos);
         write(STDOUT_FILENO, "\x1b[0G", sizeof("\x1b[0G"));
         write(STDOUT_FILENO, prompt, promptlen);
         write(STDOUT_FILENO, buffer, buffersize);
         write(STDOUT_FILENO, "\x1b[0K", sizeof("\x1b[0K"));
-
-        // Position cursor
-        snprintf(cursorpos, 7, "\x1b[%iG", promptlen + 1 + bufferpos);
         write(STDOUT_FILENO, cursorpos, sizeof(cursorpos));
 
-        // Read in next character
+        // read-in next character
         read(STDIN_FILENO, &c, 1);
-
         switch(c) {
-            case 13:
+            case 13: // enter
+                write(STDOUT_FILENO, "\x1b[1E", sizeof("\x1b[1E"));
                 goto returnLine;
-            case 127:
+            case 127: // backspace
                 if (bufferpos > 0) {
                     memmove(buffer+(bufferpos-1), buffer+bufferpos , bufferlen - bufferpos);
                     bufferpos--;
                     bufferlen--;
                     buffer[bufferlen] = '\0';
-                    break;
                 }
-            case 27:
+                break;
+            case 27: // escape character
+                // read-in the next two characters
                 if (read(STDOUT_FILENO, eseq, 1) == -1) { break; }
                 if (read(STDOUT_FILENO, eseq+1, 1) == -1) { break; }
                 if (eseq[0] == '[') {
                     switch(eseq[1]) {
-                        // Right arrow key
+                        // right arrow key
                         case 'C':
-                            if (bufferpos < bufferlen) { 
-                                bufferpos++;
-                            }
+                            if (bufferpos < bufferlen) { bufferpos++; }
                             break;
-                        // Left arrow key
+                        // left arrow key
                         case 'D':
-                            if (bufferpos > 0) { 
-                                bufferpos--;
-                            }
+                            if (bufferpos > 0) { bufferpos--; }
                             break;
                     }
                 }
@@ -76,6 +77,7 @@ char *tsh_getLine(char* prompt, int promptlen) {
                 }
                 break;
         }
+        // allocate more space for buffer if required
         if (bufferlen >= buffersize) {
             buffersize += TSH_LINEBUFFERSIZE;
             buffer = realloc(buffer, buffersize);
@@ -84,47 +86,57 @@ char *tsh_getLine(char* prompt, int promptlen) {
     } while (1);
 
     returnLine:
-        write(STDOUT_FILENO, "\x1b[1E", sizeof("\x1b[1E"));
         return buffer;
+}
+
+int enableRawTerminal(struct termios terminal_settings) {
+    struct termios modified_settings;
+
+    if (!isatty(STDIN_FILENO)) { return -1; } 
+
+    modified_settings = terminal_settings;
+    modified_settings.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+    modified_settings.c_oflag &= ~(OPOST);
+    modified_settings.c_cflag |= (CS8);
+    modified_settings.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+    modified_settings.c_cc[VMIN] = 1; 
+    modified_settings.c_cc[VTIME] = 0;
+
+    if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings) == -1) { return -1; };
+
+    return 0;
+}
+
+int disableRawTerminal() {
+    tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings);
 }
 
 int main (int argc, char **argv) {
     char host[_POSIX_HOST_NAME_MAX];
     char cwd[PATH_MAX];
-    char* login;
     char prompt[50];
     int promptlen;
-
     int status;
     char* line;
     char** args;
-    static struct termios canonical_settings;
-    struct termios raw_settings;
 
     // Enable raw terminal mode
-    if (tcgetattr(STDIN_FILENO, &canonical_settings) == -1) { return -1; }
-    if (!isatty(STDIN_FILENO)) { return -1; } 
-    //else {atexit(tcsetattr(STDIN_FILENO,TCSAFLUSH,&canonical_settings));}
+    if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1 ||
+        enableRawTerminal(terminal_settings) == -1 ||
+        atexit(disableRawTerminal) != 0) { return -1; }
 
-    raw_settings = canonical_settings;
-    raw_settings.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-    raw_settings.c_oflag &= ~(OPOST);
-    raw_settings.c_cflag |= (CS8);
-    raw_settings.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-    raw_settings.c_cc[VMIN] = 1; 
-    raw_settings.c_cc[VTIME] = 0;
+    // get prompt string and its length
+    if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {
+        promptlen = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
+    } {return -1;}
 
-    if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&raw_settings) == -1) { return -1; };
-
-    // Get prompt string and prompt size
-    if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) { return -1; }
-    promptlen = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
-
-    // Main program loop
+    // main program loop
     do {
         if ((line = tsh_getLine(prompt, promptlen)) == NULL) { return -1; }
         //if ((args = tsh_tokenizeLine(line)) == NULL) { return -1; }
         //if (tsh_executeCommand(args) == NULL) { return -1; }
 
     } while (1);
+
+    disableRawTerminal();
 }
