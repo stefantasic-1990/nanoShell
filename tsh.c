@@ -11,11 +11,13 @@
 
 char *tsh_getLine(char* prompt, int promptlen) {
     char c;
+    char eseq[3];
     struct winsize ws;
     int buffersize = TSH_LINEBUFFERSIZE;
     int bufferpos = 0;
     int bufferlen = 0;
-    char *buffer = malloc(sizeof(char) * buffersize);
+    char cursorpos[7];
+    char* buffer = malloc(sizeof(char) * buffersize);
 
     ioctl(1, TIOCGWINSZ, &ws);
 
@@ -24,6 +26,11 @@ char *tsh_getLine(char* prompt, int promptlen) {
         write(STDOUT_FILENO, "\x1b[0G", sizeof("\x1b[0G"));
         write(STDOUT_FILENO, prompt, promptlen);
         write(STDOUT_FILENO, buffer, buffersize);
+        write(STDOUT_FILENO, "\x1b[0K", sizeof("\x1b[0K"));
+
+        // Position cursor
+        snprintf(cursorpos, 7, "\x1b[%iG", promptlen + 1 + bufferpos);
+        write(STDOUT_FILENO, cursorpos, sizeof(cursorpos));
 
         // Read in next character
         read(STDIN_FILENO, &c, 1);
@@ -31,12 +38,41 @@ char *tsh_getLine(char* prompt, int promptlen) {
         switch(c) {
             case 13:
                 goto returnLine;
+            case 127:
+                if (bufferpos > 0) {
+                    memmove(buffer+(bufferpos-1), buffer+bufferpos , bufferlen - bufferpos);
+                    bufferpos--;
+                    bufferlen--;
+                    buffer[bufferlen] = '\0';
+                    break;
+                }
+            case 27:
+                if (read(STDOUT_FILENO, eseq, 1) == -1) { break; }
+                if (read(STDOUT_FILENO, eseq+1, 1) == -1) { break; }
+                if (eseq[0] == '[') {
+                    switch(eseq[1]) {
+                        // Right arrow key
+                        case 'C':
+                            if (bufferpos < bufferlen) { 
+                                bufferpos++;
+                            }
+                            break;
+                        // Left arrow key
+                        case 'D':
+                            if (bufferpos > 0) { 
+                                bufferpos--;
+                            }
+                            break;
+                    }
+                }
+                break;
+
             default:
                 if ((promptlen + bufferlen) < ws.ws_col) { 
+                    memmove(buffer+bufferpos+1, buffer+bufferpos, bufferlen - bufferpos);
                     buffer[bufferpos] = c;
                     bufferpos++;
                     bufferlen++;
-                    write(STDOUT_FILENO, &c, sizeof(c));
                 }
                 break;
         }
