@@ -9,9 +9,6 @@
 
 #define TSH_LINEBUFFERSIZE 100
 
-#define KEY_CRETURN
-#define KEY_ERIGHT
-
 struct termios terminal_settings;
 
 char *tsh_getLine(char* prompt, int promptlen) {
@@ -68,7 +65,7 @@ char *tsh_getLine(char* prompt, int promptlen) {
                 }
                 break;
 
-            default:
+            default: // store character in buffer
                 if ((promptlen + bufferlen) < ws.ws_col) { 
                     memmove(buffer+bufferpos+1, buffer+bufferpos, bufferlen - bufferpos);
                     buffer[bufferpos] = c;
@@ -81,7 +78,7 @@ char *tsh_getLine(char* prompt, int promptlen) {
         if (bufferlen >= buffersize) {
             buffersize += TSH_LINEBUFFERSIZE;
             buffer = realloc(buffer, buffersize);
-            if (!buffer) { return NULL; }
+            if (!buffer) {return NULL;}
         }
     } while (1);
 
@@ -89,11 +86,12 @@ char *tsh_getLine(char* prompt, int promptlen) {
         return buffer;
 }
 
-int enableRawTerminal(struct termios terminal_settings) {
+int enableRawTerminal() {
     struct termios modified_settings;
 
-    if (!isatty(STDIN_FILENO)) { return -1; } 
-
+    // check TTY device
+    if (!isatty(STDIN_FILENO)) {return -1;} 
+    // change terminal settings
     modified_settings = terminal_settings;
     modified_settings.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
     modified_settings.c_oflag &= ~(OPOST);
@@ -101,17 +99,18 @@ int enableRawTerminal(struct termios terminal_settings) {
     modified_settings.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
     modified_settings.c_cc[VMIN] = 1; 
     modified_settings.c_cc[VTIME] = 0;
-
-    if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings) == -1) { return -1; };
+    // set new terminal settings
+    if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&modified_settings) == -1) {return -1;};
 
     return 0;
 }
 
-int disableRawTerminal() {
+void disableRawTerminal() {
+    // restore initial settings
     tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings);
 }
 
-int main (int argc, char **argv) {
+int main(int argc, char **argv) {
     char host[_POSIX_HOST_NAME_MAX];
     char cwd[PATH_MAX];
     char prompt[50];
@@ -122,17 +121,15 @@ int main (int argc, char **argv) {
 
     // Enable raw terminal mode
     if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1 ||
-        enableRawTerminal(terminal_settings) == -1 ||
-        atexit(disableRawTerminal) != 0) { return -1; }
-
+        enableRawTerminal() == -1 ||
+        atexit(disableRawTerminal) != 0) {return -1;}
     // get prompt string and its length
-    if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {
+    if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {return -1;} {
         promptlen = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
-    } {return -1;}
-
+    }
     // main program loop
     do {
-        if ((line = tsh_getLine(prompt, promptlen)) == NULL) { return -1; }
+        if ((line = tsh_getLine(prompt, promptlen)) == NULL) {return -1;}
         //if ((args = tsh_tokenizeLine(line)) == NULL) { return -1; }
         //if (tsh_executeCommand(args) == NULL) { return -1; }
 
