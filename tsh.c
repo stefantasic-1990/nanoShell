@@ -59,6 +59,13 @@ char *tsh_getLine(char* prompt, int prompt_l) {
                 break; 
             case 14: // ctrl+n
                 break; 
+            case 21: // ctrl+u
+                free(buffer);
+                buffer = malloc(sizeof(char) * buffer_s);
+                buffer_p = 0;
+                buffer_o = 0;
+                buffer_l = 0;
+                break;
             case 27: // escape character
                 // read-in the next two characters
                 if (read(STDOUT_FILENO, eseq, 1) == -1) {break;}
