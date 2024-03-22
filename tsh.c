@@ -58,7 +58,17 @@ char *tsh_getLine(char* prompt, int prompt_l) {
             case 16: // ctrl+p
                 break; 
             case 14: // ctrl+n
-                break; 
+                break;
+            case 11:
+                break;
+            case 1:
+                break;
+            case 5:
+                break;
+            case 12:
+                break;
+            case 23:
+                break;
             case 21: // ctrl+u
                 free(buffer);
                 buffer = malloc(sizeof(char) * buffer_s);
