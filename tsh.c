@@ -59,15 +59,15 @@ char *tsh_getLine(char* prompt, int prompt_l) {
                 break; 
             case 14: // ctrl+n
                 break;
-            case 11:
+            case 11: // ctrl+k
                 break;
-            case 1:
+            case 1: // ctrl+a
                 break;
-            case 5:
+            case 5: // ctrl+e
                 break;
-            case 12:
+            case 12: // ctrl+l
                 break;
-            case 23:
+            case 23: // ctrl+w
                 break;
             case 21: // ctrl+u
                 free(buffer);
