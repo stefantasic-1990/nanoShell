@@ -7,33 +7,31 @@
 #include <limits.h>
 #include <sys/ioctl.h>
 
-#define TSH_LINEBUFFERSIZE 100
-
 struct termios terminal_settings;
 
-char *tsh_getLine(char* prompt, int promptlen) {
-    int buffersize = TSH_LINEBUFFERSIZE;
-    int bufferpos = 0;
-    int bufferlen = 0;
-    int bufferoffset = 0;
-    char* buffer = malloc(sizeof(char) * buffersize);
-    char cursorpos[7];
-    char eseq[3];    
-    char c;
+char *tsh_getLine(char* prompt, int prompt_l) {
+    int buffer_s = 50; // line buffer total size
+    int buffer_l = 0; // line buffer character length
+    int buffer_p = 0; // line buffer cursor position
+    int buffer_o = 0; // line buffer display offset
+    char* buffer = malloc(sizeof(char) * buffer_s); // line buffer
+    char cursor_p[10]; // cursor position escape sequence
+    char c; // input character
+    char eseq[3]; // input escape sequence
+    int window_c; // terminal window column width
 
-    // get size of terminal window
+    // get column width of terminal window
     struct winsize ws;
-    ioctl(1, TIOCGWINSZ, &ws);
+    if (ioctl(1, TIOCGWINSZ, &ws) == -1) {window_c = 80;} else {window_c = ws.ws_col - 1;}
 
     do {
-        // refresh line and reset cursor
-        snprintf(cursorpos, sizeof(cursorpos), "\x1b[%iG", promptlen + 1 + bufferpos - bufferoffset);
+        // refresh line
+        snprintf(cursor_p, sizeof(cursor_p), "\x1b[%iG", prompt_l + 1 + buffer_p - buffer_o);
         write(STDOUT_FILENO, "\x1b[0G", strlen("\x1b[0G"));
-        write(STDOUT_FILENO, prompt, promptlen);
-        write(STDOUT_FILENO, (buffer + bufferoffset), (ws.ws_col - 1 - promptlen));
+        write(STDOUT_FILENO, prompt, prompt_l);
+        write(STDOUT_FILENO, (buffer + buffer_o), (window_c - prompt_l));
         write(STDOUT_FILENO, "\x1b[0K", strlen("\x1b[0K"));
-        write(STDOUT_FILENO, cursorpos, strlen(cursorpos));
-
+        write(STDOUT_FILENO, cursor_p, strlen(cursor_p));
         // read-in next character
         read(STDIN_FILENO, &c, 1);
 
@@ -44,11 +42,11 @@ char *tsh_getLine(char* prompt, int promptlen) {
                 goto returnLine;
             case 8: // ctrl+h
             case 127: // backspace
-                if (bufferpos > 0) {
-                    memmove(buffer+(bufferpos-1), buffer+bufferpos , bufferlen - bufferpos);
-                    bufferpos--;
-                    bufferlen--;
-                    buffer[bufferlen] = '\0';
+                if (buffer_p > 0) {
+                    memmove(buffer+(buffer_p-1), buffer+buffer_p , buffer_l - buffer_p);
+                    buffer_p--;
+                    buffer_l--;
+                    buffer[buffer_l] = '\0';
                 }
                 break;
             case 3: // ctrl+c
@@ -63,19 +61,19 @@ char *tsh_getLine(char* prompt, int promptlen) {
                 break; 
             case 27: // escape character
                 // read-in the next two characters
-                if (read(STDOUT_FILENO, eseq, 1) == -1) { break; }
-                if (read(STDOUT_FILENO, eseq+1, 1) == -1) { break; }
+                if (read(STDOUT_FILENO, eseq, 1) == -1) {break;}
+                if (read(STDOUT_FILENO, eseq+1, 1) == -1) {break;}
                 if (eseq[0] == '[') {
                     switch(eseq[1]) {
                         // right arrow key
                         case 'C':
-                            if (bufferpos < bufferlen) { bufferpos++; }
-                            if ((bufferpos - bufferoffset) > (ws.ws_col - 1 - promptlen)) { bufferoffset++; }
+                            if (buffer_p < buffer_l) {buffer_p++;}
+                            if ((buffer_p - buffer_o) > (window_c - prompt_l)) {buffer_o++;}
                             break;
                         // left arrow key
                         case 'D':
-                            if (bufferpos > 0) { bufferpos--; }
-                            if ((bufferpos - bufferoffset) < 0) { bufferoffset--; }
+                            if (buffer_p > 0) {buffer_p--;}
+                            if ((buffer_p - buffer_o) < 0) {buffer_o--;}
                             break;
                         // up arrow key
                         case 'A':
@@ -89,23 +87,18 @@ char *tsh_getLine(char* prompt, int promptlen) {
                 }
                 break;
             default: // store character in buffer
-                memmove(buffer+bufferpos+1, buffer+bufferpos, bufferlen - bufferpos);
-                buffer[bufferpos] = c;
-                bufferpos++;
-                bufferlen++;
-                buffer[bufferlen] = '\0';
-                // if ((bufferlen - bufferoffset) == (ws.ws_col - promptlen)) {
-                //     bufferoffset++;
-                // }
-                if ((bufferpos - bufferoffset) > (ws.ws_col - 1 - promptlen)) {
-                    bufferoffset++;
-                }
+                memmove(buffer+buffer_p+1, buffer+buffer_p, buffer_l - buffer_p);
+                buffer[buffer_p] = c;
+                buffer_p++;
+                buffer_l++;
+                buffer[buffer_l] = '\0';
+                if ((buffer_p - buffer_o) > (window_c - prompt_l)) {buffer_o++;}
                 break;
         }
         // allocate more space for buffer if required
-        if (bufferlen >= buffersize) {
-            buffersize += TSH_LINEBUFFERSIZE;
-            buffer = realloc(buffer, buffersize);
+        if (buffer_l >= buffer_s) {
+            buffer_s += buffer_s;
+            buffer = realloc(buffer, buffer_s);
             if (!buffer) {return NULL;}
         }
     } while (1);
@@ -144,22 +137,22 @@ int main(int argc, char **argv) {
     char host[_POSIX_HOST_NAME_MAX];
     char cwd[PATH_MAX];
     char prompt[50];
-    int promptlen;
+    int prompt_l;
     int status;
     char* line;
     char** args;
 
     // Enable raw terminal mode
-    if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1 ||
-        enableRawTerminal() == -1 ||
-        atexit(disableRawTerminal) != 0) {return -1;}
-    // get prompt string and its length
+    if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
+    if (enableRawTerminal() == -1) {return 1;}
+    if (atexit(disableRawTerminal) != 0) {return 1;}
+    // assemble prompt string and get its length
     if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {return -1;} {
-        promptlen = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
+        prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
     }
     // main program loop
     do {
-        if ((line = tsh_getLine(prompt, promptlen)) == NULL) {return -1;}
+        if ((line = tsh_getLine(prompt, prompt_l)) == NULL) {return -1;}
         //if ((args = tsh_tokenizeLine(line)) == NULL) { return -1; }
         //if (tsh_executeCommand(args) == NULL) { return -1; }
     } while (1);
