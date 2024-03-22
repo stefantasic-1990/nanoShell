@@ -15,6 +15,7 @@ char *tsh_getLine(char* prompt, int promptlen) {
     int buffersize = TSH_LINEBUFFERSIZE;
     int bufferpos = 0;
     int bufferlen = 0;
+    int bufferoffset = 0;
     char* buffer = malloc(sizeof(char) * buffersize);
     char cursorpos[7];
     char eseq[3];    
@@ -26,12 +27,12 @@ char *tsh_getLine(char* prompt, int promptlen) {
 
     do {
         // refresh line and reset cursor
-        snprintf(cursorpos, 7, "\x1b[%iG", promptlen + 1 + bufferpos);
-        write(STDOUT_FILENO, "\x1b[0G", sizeof("\x1b[0G"));
+        snprintf(cursorpos, sizeof(cursorpos), "\x1b[%iG", promptlen + 1 + bufferpos - bufferoffset);
+        write(STDOUT_FILENO, "\x1b[0G", strlen("\x1b[0G"));
         write(STDOUT_FILENO, prompt, promptlen);
-        write(STDOUT_FILENO, buffer, buffersize);
-        write(STDOUT_FILENO, "\x1b[0K", sizeof("\x1b[0K"));
-        write(STDOUT_FILENO, cursorpos, sizeof(cursorpos));
+        write(STDOUT_FILENO, (buffer + bufferoffset), (ws.ws_col - 1 - promptlen));
+        write(STDOUT_FILENO, "\x1b[0K", strlen("\x1b[0K"));
+        write(STDOUT_FILENO, cursorpos, strlen(cursorpos));
 
         // read-in next character
         read(STDIN_FILENO, &c, 1);
@@ -69,10 +70,12 @@ char *tsh_getLine(char* prompt, int promptlen) {
                         // right arrow key
                         case 'C':
                             if (bufferpos < bufferlen) { bufferpos++; }
+                            if ((bufferpos - bufferoffset) > (ws.ws_col - 1 - promptlen)) { bufferoffset++; }
                             break;
                         // left arrow key
                         case 'D':
                             if (bufferpos > 0) { bufferpos--; }
+                            if ((bufferpos - bufferoffset) < 0) { bufferoffset--; }
                             break;
                         // up arrow key
                         case 'A':
@@ -86,11 +89,16 @@ char *tsh_getLine(char* prompt, int promptlen) {
                 }
                 break;
             default: // store character in buffer
-                if ((promptlen + bufferlen) < ws.ws_col) { 
-                    memmove(buffer+bufferpos+1, buffer+bufferpos, bufferlen - bufferpos);
-                    buffer[bufferpos] = c;
-                    bufferpos++;
-                    bufferlen++;
+                memmove(buffer+bufferpos+1, buffer+bufferpos, bufferlen - bufferpos);
+                buffer[bufferpos] = c;
+                bufferpos++;
+                bufferlen++;
+                buffer[bufferlen] = '\0';
+                // if ((bufferlen - bufferoffset) == (ws.ws_col - promptlen)) {
+                //     bufferoffset++;
+                // }
+                if ((bufferpos - bufferoffset) > (ws.ws_col - 1 - promptlen)) {
+                    bufferoffset++;
                 }
                 break;
         }
