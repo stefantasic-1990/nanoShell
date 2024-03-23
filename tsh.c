@@ -93,7 +93,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
     char eseq[3]; // input escape sequence
     int window_c; // terminal window column width
 
-    // get column width of terminal window
+    // get line display length
     struct winsize ws;
     if (ioctl(1, TIOCGWINSZ, &ws) == -1) {window_c = 80;} else {window_c = ws.ws_col - 1;}
     buffer_dl = window_c - prompt_l;
@@ -113,11 +113,11 @@ char* tsh_getLine(char* prompt, int prompt_l) {
         switch(c) {
             case 13: // enter
                 if (buffer_l != 0) {
-                    write(STDOUT_FILENO, "\x1b[1E", sizeof("\x1b[1E"));
+                    write(STDOUT_FILENO, "\n", sizeof("\n"));
                     // buffer[buffer_l] = '\0';
                     goto returnLine;
                 }
-                write(STDOUT_FILENO, "\x1b[1E", sizeof("\x1b[1E"));
+                write(STDOUT_FILENO, "\n", sizeof("\n"));
                 break;
             case 8: // ctrl+h
             case 127: // backspace
