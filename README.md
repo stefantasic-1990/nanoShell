@@ -9,4 +9,4 @@ Personal project implementing a basic shell program in C.
 - [x] Single-line editing mode
 - [ ] Command parsing with argument quoting and quote escaping
 - [ ] Command piping and redirection
-- [ ] Persistant command history
+- [ ] Persistent command history
