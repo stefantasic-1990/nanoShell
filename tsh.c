@@ -82,10 +82,11 @@ char** tsh_parseLine(char* line) {
 }
 
 char* tsh_getLine(char* prompt, int prompt_l) {
-    int buffer_s = 50; // line buffer total size
+    int buffer_s = 100; // line buffer total size
     int buffer_l = 0; // line buffer character length
     int buffer_p = 0; // line buffer cursor position
     int buffer_o = 0; // line buffer display offset
+    int buffer_dl = 0; // line buffer display length
     char* buffer = calloc(buffer_s, sizeof(char)); // line buffer
     char cursor_p[10]; // cursor position escape sequence
     char c; // input character
@@ -95,13 +96,14 @@ char* tsh_getLine(char* prompt, int prompt_l) {
     // get column width of terminal window
     struct winsize ws;
     if (ioctl(1, TIOCGWINSZ, &ws) == -1) {window_c = 80;} else {window_c = ws.ws_col - 1;}
+    buffer_dl = window_c - prompt_l;
 
     do {
         // refresh line
         snprintf(cursor_p, sizeof(cursor_p), "\x1b[%iG", prompt_l + 1 + buffer_p - buffer_o);
         write(STDOUT_FILENO, "\x1b[0G", strlen("\x1b[0G"));
         write(STDOUT_FILENO, prompt, prompt_l);
-        write(STDOUT_FILENO, (buffer + buffer_o), (window_c - prompt_l));
+        write(STDOUT_FILENO, (buffer + buffer_o), (buffer_s < buffer_dl) ? buffer_s : buffer_dl);
         write(STDOUT_FILENO, "\x1b[0K", strlen("\x1b[0K"));
         write(STDOUT_FILENO, cursor_p, strlen(cursor_p));
         // read-in next character
@@ -162,7 +164,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
                         // right arrow key
                         case 'C':
                             if (buffer_p < buffer_l) {buffer_p++;}
-                            if ((buffer_p - buffer_o) > (window_c - prompt_l)) {buffer_o++;}
+                            if ((buffer_p - buffer_o) > buffer_dl) {buffer_o++;}
                             break;
                         // left arrow key
                         case 'D':
@@ -186,7 +188,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
                 buffer_p++;
                 buffer_l++;
                 buffer[buffer_l] = '\0';
-                if ((buffer_p - buffer_o) > (window_c - prompt_l)) {buffer_o++;}
+                if ((buffer_p - buffer_o) > buffer_dl) {buffer_o++;}
                 break;
         }
         // allocate more space for buffer if required
