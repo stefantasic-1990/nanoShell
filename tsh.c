@@ -112,13 +112,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
         // handle character
         switch(c) {
             case 13: // enter
-                if (buffer_l != 0) {
-                    write(STDOUT_FILENO, "\n", sizeof("\n"));
-                    // buffer[buffer_l] = '\0';
-                    goto returnLine;
-                }
-                write(STDOUT_FILENO, "\n", sizeof("\n"));
-                break;
+                goto returnLine;
             case 8: // ctrl+h
             case 127: // backspace
                 if (buffer_p > 0) {
@@ -200,6 +194,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
     } while (1);
 
     returnLine:
+        write(STDOUT_FILENO, "\n", sizeof("\n"));
         return buffer;
 }
 
