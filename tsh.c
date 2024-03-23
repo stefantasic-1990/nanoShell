@@ -15,7 +15,7 @@ char** tsh_parseLine(char* line) {
     int args_p = 0; // args buffer position
     int arg_s = 20; // arg buffer size
     int arg_p = 0; // arg buffer position
-    char* arg = malloc(arg_s * sizeof(char*));
+    char* arg = malloc(arg_s * sizeof(char));
     char** args = malloc(args_s * sizeof(char*));
 
     int c;
@@ -39,7 +39,7 @@ char** tsh_parseLine(char* line) {
                 arg[arg_p] = '\0';
                 write(STDOUT_FILENO, args[0], 10);
                 read(STDIN_FILENO, &c, 1);
-                *args[args_p] = *arg;
+                args[args_p] = arg;
                 write(STDOUT_FILENO, args[args_p], 10);
                 read(STDIN_FILENO, &c, 1);
                 args_p++;
