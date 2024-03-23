@@ -18,40 +18,52 @@ char** tsh_parseLine(char* line) {
     char** args = malloc(args_s * sizeof(char*));
 
     while (1) {
+        // allocate space for next token
         args[args_p] =  malloc(arg_s * sizeof(char));
 
+        // parse next token
         while (1) {
+            // if end of line is reached
             if (line[line_p] == '\0') {
+                // if we are building a token null-terminate it
                 if (arg_p != 0) {
                     args[args_p][arg_p] = '\0';
                     args[args_p+1] = NULL;
                 }
                 goto end;
+            // if escape character
             } else if (line[line_p] == '\\') {
+                // get next character and determine escape sequence
                 switch(line[line_p+1]) {
+                // ignore escape character not part of defined escape sequence
                 default:
                     line_p++;
                 }
+            // if space character
             } else if (line[line_p] == ' ') {
+                // if we are building a token null-terminate it
                 if (arg_p != 0) {args[args_p][arg_p] = '\0';}
                 line_p++;
                 break;
+            // if regular character
             } else {
+                // add character to token string
                 args[args_p][arg_p] = line[line_p];
                 line_p++;
                 arg_p++;
             }
-            // reallocate more space for token if needed
+            // reallocate more token characters if required
             if (arg_p >= arg_s) {
             arg_s += arg_s;
             args[args_p] = realloc(args[args_p], arg_s * sizeof(char));
             if (!args[args_p]) {return NULL;}
             }   
         }
+        // set variables for next token string
         args_p++;
         arg_p = 0;
 
-        // reallocate more pointers for tokens if needed
+        // reallocate more token pointers if required
         if (args_p >= args_s) {
         args_s += args_s;
         args = realloc(args, args_s * sizeof(char*));
