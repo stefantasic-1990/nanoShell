@@ -41,9 +41,22 @@ char** tsh_parseLine(char* line) {
                 line_p++;
                 arg_p++;
             }
+            // reallocate more space for token if needed
+            if (arg_p >= arg_s) {
+            arg_s += arg_s;
+            args[args_p] = realloc(args[args_p], arg_s * sizeof(char));
+            if (!args[args_p]) {return NULL;}
+            }   
         }
         args_p++;
         arg_p = 0;
+
+        // reallocate more pointers for tokens if needed
+        if (args_p >= args_s) {
+        args_s += args_s;
+        args = realloc(args, args_s * sizeof(char*));
+        if (!args[args_p]) {return NULL;}
+        } 
     }
 
     int c;
@@ -51,7 +64,7 @@ char** tsh_parseLine(char* line) {
     end:
         for (int i = 0; args[i]; i++) {
             if (args[i] == NULL) { break; };
-            write(STDOUT_FILENO, args[i], 10);
+            write(STDOUT_FILENO, args[i], arg_s);
             read(STDIN_FILENO, &c, 1);
         }
 
