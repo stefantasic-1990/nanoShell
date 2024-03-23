@@ -10,9 +10,24 @@
 struct termios terminal_settings;
 
 int tsh_executeCmd(char** args) {
+    int pid;
+    int status;
 
     // check if token array is empty
     if (args[0] == NULL) {return 1;}
+
+    pid = fork();
+    if (pid == 0) {
+        // child process entrs here
+        if (execvp(args[0], args) == -1) {return -1;}
+    } else if (pid < 0 ) {
+        // fork error
+        return -1;
+    } else {
+        // parent process entrs here
+        do {waitpid(pid, &status, WUNTRACED);}
+        while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    }
 
     return 1;
 }
@@ -194,7 +209,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
     } while (1);
 
     returnLine:
-        write(STDOUT_FILENO, "\n", sizeof("\n"));
+        write(STDOUT_FILENO, "\n\r", sizeof("\n\r"));
         return buffer;
 }
 
