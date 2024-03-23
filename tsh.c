@@ -9,7 +9,61 @@
 
 struct termios terminal_settings;
 
-char *tsh_getLine(char* prompt, int prompt_l) {
+char** tsh_parseLine(char* line) {
+    int line_p = 0; // line buffer position
+    int args_s = 10; // args buffer size
+    int args_p = 0; // args buffer position
+    int arg_s = 20; // arg buffer size
+    int arg_p = 0; // arg buffer position
+    char* arg = malloc(arg_s * sizeof(char*));
+    char** args = malloc(args_s * sizeof(char*));
+
+    int c;
+
+    while (1) {
+        if (line[line_p] == '\0') {
+            if (arg_p != 0) {
+                arg[arg_p] = '\0';
+                args[args_p] = arg;
+                args[args_p+1] = NULL;
+            }
+            goto end;
+        } else if (line[line_p] == '\\') {
+            switch(line[line_p+1]) {
+            default:
+                line_p++;
+                break;
+            }
+        } else if (line[line_p] == ' ') {
+            if (arg_p != 0) {
+                arg[arg_p] = '\0';
+                write(STDOUT_FILENO, args[0], 10);
+                read(STDIN_FILENO, &c, 1);
+                *args[args_p] = *arg;
+                write(STDOUT_FILENO, args[args_p], 10);
+                read(STDIN_FILENO, &c, 1);
+                args_p++;
+                arg_p = 0;
+            }
+            line_p++;
+        } else {
+            arg[arg_p] = line[line_p];
+            line_p++;
+            arg_p++;
+        }
+    }
+
+    end:
+        for (int i = 0; args[i]; i++) {
+            //if (args[i] == NULL) { read(STDIN_FILENO, &c, 1); };
+            write(STDOUT_FILENO, args[i], 10);
+            read(STDIN_FILENO, &c, 1);
+        }
+
+        return args;
+}
+
+char* tsh_getLine(char* prompt, int prompt_l) {
     int buffer_s = 50; // line buffer total size
     int buffer_l = 0; // line buffer character length
     int buffer_p = 0; // line buffer cursor position
@@ -38,8 +92,13 @@ char *tsh_getLine(char* prompt, int prompt_l) {
         // handle character
         switch(c) {
             case 13: // enter
-                write(STDOUT_FILENO, "\x1b[1E", sizeof("\x1b[1E"));
-                goto returnLine;
+                if (buffer_l != 0) {
+                    write(STDOUT_FILENO, "\x1b[1E", sizeof("\x1b[1E"));
+                    // buffer[buffer_l] = '\0';
+                    goto returnLine;
+                }
+                write(STDOUT_FILENO, "\x1b[1Ess", sizeof("\x1b[1E"));
+                break;
             case 8: // ctrl+h
             case 127: // backspace
                 if (buffer_p > 0) {
@@ -170,7 +229,7 @@ int main(int argc, char **argv) {
     // main program loop
     do {
         if ((line = tsh_getLine(prompt, prompt_l)) == NULL) {return -1;}
-        //if ((args = tsh_tokenizeLine(line)) == NULL) { return -1; }
+        if ((args = tsh_parseLine(line)) == NULL) { return -1; }
         //if (tsh_executeCommand(args) == NULL) { return -1; }
     } while (1);
 
