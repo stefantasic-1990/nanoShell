@@ -11,21 +11,33 @@ struct termios terminal_settings;
 
 int tsh_executeCmd(char** args) {
     int pid;
+    int wpid;
     int status;
 
     // check if token array is empty
-    if (args[0] == NULL) {return 1;}
+    // NOT SURE IF THIS IS CATCHING
+    if (args[0] == NULL) {return -1;}
 
+    // check if command is a builtin
+    if (strcmp(args[0], "cd") == 0) {
+        if (args[1] == NULL) {return 1;}
+        if (chdir(args[1]) != 0) {return -1;}
+    } else if (strcmp(args[0], "exit") == 0) {
+        return 0;
+    }
+
+    // create child process
     pid = fork();
     if (pid == 0) {
-        // child process entrs here
-        if (execvp(args[0], args) == -1) {return -1;}
+        // child process execute command
+        execvp(args[0], args);
+        exit(EXIT_FAILURE);
     } else if (pid < 0 ) {
         // fork error
         return -1;
     } else {
-        // parent process entrs here
-        do {waitpid(pid, &status, WUNTRACED);}
+        // parent process wait for child
+        do {wpid = waitpid(pid, &status, WUNTRACED);}
         while (!WIFEXITED(status) && !WIFSIGNALED(status));
     }
 
@@ -52,7 +64,7 @@ char** tsh_parseLine(char* line) {
                 if (arg_p != 0) {
                     args[args_p][arg_p] = '\0';
                     args[args_p+1] = NULL;
-                }
+                } else {args[args_p] = NULL;}
                 // return token array
                 return args;
             // if escape character
@@ -65,8 +77,10 @@ char** tsh_parseLine(char* line) {
                 }
             // if space character
             } else if (line[line_p] == ' ') {
-                // if we are building a token null-terminate it
-                if (arg_p != 0) {args[args_p][arg_p] = '\0';}
+                // if we are building a token null-terminate it, set next token to NULL
+                if (arg_p != 0) {
+                    args[args_p][arg_p] = '\0';
+                    }
                 line_p++;
                 break;
             // if regular character
@@ -102,11 +116,14 @@ char* tsh_getLine(char* prompt, int prompt_l) {
     int buffer_p = 0; // line buffer cursor position
     int buffer_o = 0; // line buffer display offset
     int buffer_dl = 0; // line buffer display length
-    char* buffer = calloc(buffer_s, sizeof(char)); // line buffer
     char cursor_p[10]; // cursor position escape sequence
     char c; // input character
     char eseq[3]; // input escape sequence
     int window_c; // terminal window column width
+
+    // initialize line buffer
+    char* buffer = calloc(buffer_s, sizeof(char)); // line buffer
+    buffer[0] = '\0';
 
     // get line display length
     struct winsize ws;
@@ -251,17 +268,19 @@ int main(int argc, char **argv) {
     // Enable raw terminal mode
     if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
     if (enableRawTerminal() == -1) {return 1;}
-    if (atexit(disableRawTerminal) != 0) {return 1;}
-    // assemble prompt string and get its length
-    if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {return -1;} {
-        prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
-    }
+    // if (atexit(disableRawTerminal) != 0) {return 1;}
+
     // main program loop
     do {
+        // assemble prompt string and get its length
+        if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {return -1;} {
+            prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
+        }
+        // get command line, parse, and execute
         if ((line = tsh_getLine(prompt, prompt_l)) == NULL) {return -1;}
-        if ((args = tsh_parseLine(line)) == NULL) { return -1; }
-        if ((status = tsh_executeCmd(args)) == -1) { return -1; }
+        if ((args = tsh_parseLine(line)) == NULL) {return -1;}
+        if ((status = tsh_executeCmd(args)) == -1) {return -1;}
     } while (status);
 
-    disableRawTerminal();
+    // disableRawTerminal();
 }
