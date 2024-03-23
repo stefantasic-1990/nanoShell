@@ -9,17 +9,25 @@
 
 struct termios terminal_settings;
 
+int tsh_executeCmd(char** args) {
+
+    // check if token array is empty
+    if (args[0] == NULL) {return 1;}
+
+    return 1;
+}
+
 char** tsh_parseLine(char* line) {
     int line_p = 0; // line buffer position
     int args_s = 10; // args buffer size
     int args_p = 0; // args buffer position
     int arg_s = 20; // arg buffer size
     int arg_p = 0; // arg buffer position
-    char** args = malloc(args_s * sizeof(char*));
+    char** args = calloc(args_s, sizeof(char*));
 
     while (1) {
         // allocate space for next token
-        args[args_p] =  malloc(arg_s * sizeof(char));
+        args[args_p] =  calloc(arg_s, sizeof(char));
 
         // parse next token
         while (1) {
@@ -30,7 +38,8 @@ char** tsh_parseLine(char* line) {
                     args[args_p][arg_p] = '\0';
                     args[args_p+1] = NULL;
                 }
-                goto end;
+                // return token array
+                return args;
             // if escape character
             } else if (line[line_p] == '\\') {
                 // get next character and determine escape sequence
@@ -70,17 +79,6 @@ char** tsh_parseLine(char* line) {
         if (!args[args_p]) {return NULL;}
         } 
     }
-
-    int c;
-
-    end:
-        for (int i = 0; args[i]; i++) {
-            if (args[i] == NULL) { break; };
-            write(STDOUT_FILENO, args[i], arg_s);
-            read(STDIN_FILENO, &c, 1);
-        }
-
-        return args;
 }
 
 char* tsh_getLine(char* prompt, int prompt_l) {
@@ -88,7 +86,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
     int buffer_l = 0; // line buffer character length
     int buffer_p = 0; // line buffer cursor position
     int buffer_o = 0; // line buffer display offset
-    char* buffer = malloc(sizeof(char) * buffer_s); // line buffer
+    char* buffer = calloc(buffer_s, sizeof(char)); // line buffer
     char cursor_p[10]; // cursor position escape sequence
     char c; // input character
     char eseq[3]; // input escape sequence
@@ -117,7 +115,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
                     // buffer[buffer_l] = '\0';
                     goto returnLine;
                 }
-                write(STDOUT_FILENO, "\x1b[1Ess", sizeof("\x1b[1E"));
+                write(STDOUT_FILENO, "\x1b[1E", sizeof("\x1b[1E"));
                 break;
             case 8: // ctrl+h
             case 127: // backspace
@@ -150,7 +148,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
                 break;
             case 21: // ctrl+u
                 free(buffer);
-                buffer = malloc(sizeof(char) * buffer_s);
+                buffer = calloc(buffer_s, sizeof(char));
                 buffer_p = 0;
                 buffer_o = 0;
                 buffer_l = 0;
@@ -250,8 +248,8 @@ int main(int argc, char **argv) {
     do {
         if ((line = tsh_getLine(prompt, prompt_l)) == NULL) {return -1;}
         if ((args = tsh_parseLine(line)) == NULL) { return -1; }
-        //if (tsh_executeCommand(args) == NULL) { return -1; }
-    } while (1);
+        if ((status = tsh_executeCmd(args)) == -1) { return -1; }
+    } while (status);
 
     disableRawTerminal();
 }
