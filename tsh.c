@@ -7,7 +7,7 @@
 #include <limits.h>
 #include <sys/ioctl.h>
 
-#define CMD_HISTORY_SIZE 5
+#define CMD_HISTORY_SIZE 10
 
 struct termios terminal_settings; // original terminal settings
 int pid = -1; // global pid to differentiate parent when doing atexit()
