@@ -56,7 +56,8 @@ char** tsh_parseLine(char* line) {
         // parse next token
         while (1) {
             // if end of line is reached
-            if (line[line_p] == '\0') {
+            switch (line[line_p]) {
+            case '\0':
                 // if we are building a token null-terminate it
                 if (arg_p != 0) {
                     args[args_p][arg_p] = '\0';
@@ -65,7 +66,7 @@ char** tsh_parseLine(char* line) {
                 // return token array
                 return args;
             // // if escape character
-            } else if (line[line_p] == '\\') {
+            case '\\':
                 // get next character and determine escape sequence
                 // we ignore the escape character by itself
                 line_p++;
@@ -75,34 +76,32 @@ char** tsh_parseLine(char* line) {
                     arg_p++;
                     args[args_p][arg_p] = '\n';
                     arg_p++;
-                    line_p++;
                     break;
                 case '\\':
                     args[args_p][arg_p] = '\\';
                     arg_p++;
-                    line_p++;
                     break;
                 case '\"':
                     args[args_p][arg_p] = '\"';
                     arg_p++;
-                    line_p++;
                     break;
                 case '\'':
                     args[args_p][arg_p] = '\'';
                     arg_p++;
-                    line_p++;
                     break;
                 }
+                line_p++;
+                break;
             // if space character
-            } else if (line[line_p] == ' ') {
+            case ' ':
                 // if we are building a token null-terminate it, set next token to NULL
                 if (arg_p != 0) {
                     args[args_p][arg_p] = '\0';
                     }
                 line_p++;
-                break;
+                goto nextToken;
             // if regular character
-            } else {
+            default:
                 // add character to token string
                 args[args_p][arg_p] = line[line_p];
                 line_p++;
@@ -113,18 +112,20 @@ char** tsh_parseLine(char* line) {
             arg_s += arg_s;
             args[args_p] = realloc(args[args_p], arg_s * sizeof(char));
             if (!args[args_p]) {return NULL;}
-            }   
+            }  
         }
-        // set variables for next token string
-        args_p++;
-        arg_p = 0;
 
-        // reallocate more token pointers if required
-        if (args_p >= args_s) {
-        args_s += args_s;
-        args = realloc(args, args_s * sizeof(char*));
-        if (!args[args_p]) {return NULL;}
-        } 
+        nextToken:
+            // set variables for next token string
+            args_p++;
+            arg_p = 0;
+
+            // reallocate more token pointers if required
+            if (args_p >= args_s) {
+            args_s += args_s;
+            args = realloc(args, args_s * sizeof(char*));
+            if (!args[args_p]) {return NULL;}
+            } 
     }
 }
 
