@@ -7,6 +7,8 @@
 #include <limits.h>
 #include <sys/ioctl.h>
 
+#define CMD_HISTORY_SIZE 5
+
 struct termios terminal_settings; // original terminal settings
 int pid = -1; // global pid to differentiate parent when doing atexit()
 
@@ -193,18 +195,22 @@ char** tsh_parseLine(char* line) {
 }
 
 char* tsh_getLine(char* prompt, int prompt_l) {
+    static char* cmdhis[CMD_HISTORY_SIZE] = {NULL}; // command history
+    int cmdhis_p = 0; // command history position
     int buffer_s = 100; // line buffer total size
     int buffer_l = 0; // line buffer character length
     int buffer_p = 0; // line buffer cursor position
     int buffer_o = 0; // line buffer display offset
     int buffer_dl = 0; // line buffer display length
+    char* buffer; // line buffer
     char cursor_p[10]; // cursor position escape sequence
     char c; // input character
     char eseq[3]; // input escape sequence
     int window_c; // terminal window column width
 
     // initialize line buffer
-    char* buffer = calloc(buffer_s, sizeof(char)); // line buffer
+    free(buffer);
+    buffer = calloc(buffer_s, sizeof(char)); // line buffer
     buffer[0] = '\0';
 
     // get line display length
@@ -308,6 +314,14 @@ char* tsh_getLine(char* prompt, int prompt_l) {
     } while (1);
 
     returnLine:
+        // if command not empty, copy into history
+        if (buffer[0] != '\0') {
+            // free last element memory
+            free(cmdhis[CMD_HISTORY_SIZE - 1]);
+            // move elements, ignore first which is reserved for current line edit
+            memmove(cmdhis + 2, cmdhis + 1, sizeof(cmdhis) - sizeof(char*)*2);
+            cmdhis[1] = strdup(buffer);
+        }
         write(STDOUT_FILENO, "\r\n", sizeof("\r\n"));
         return buffer;
 }
@@ -333,6 +347,7 @@ int main(int argc, char **argv) {
             prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
         }
         // get command line, parse, and execute
+        // RETURNS HERE JUMP OUT OF PROGRAM IF LINE IS NULL
         if ((line = tsh_getLine(prompt, prompt_l)) == NULL) {return -1;}
         if ((args = tsh_parseLine(line)) == NULL) {return -1;}
         if ((tsh_executeCmd(args)) == -1) {return -1;}
