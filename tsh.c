@@ -10,6 +10,45 @@
 struct termios terminal_settings;
 int pid = -1;
 
+int toggleOutputPostprocessing() {
+    struct termios modified_settings;
+
+    // change terminal settings
+    if (tcgetattr(STDIN_FILENO, &modified_settings) == -1) {return 1;} 
+    modified_settings.c_oflag ^= (OPOST);
+
+    // set terminal settings
+    if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&modified_settings) == -1) {return -1;};
+
+    return 0;
+}
+
+int enableRawTerminal() {
+    struct termios modified_settings;
+
+    // check TTY device
+    if (!isatty(STDIN_FILENO)) {return -1;} 
+
+    // change terminal settings
+    if (tcgetattr(STDIN_FILENO, &modified_settings) == -1) {return 1;} 
+    modified_settings.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+    modified_settings.c_oflag &= ~(OPOST);
+    modified_settings.c_cflag |= (CS8);
+    modified_settings.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+    modified_settings.c_cc[VMIN] = 1; 
+    modified_settings.c_cc[VTIME] = 0;
+
+    // set new terminal settings
+    if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&modified_settings) == -1) {return -1;};
+
+    return 0;
+}
+
+void disableRawTerminal() {
+    // restore initial settings
+    if (pid != 0) {tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings);}
+}
+
 int tsh_executeCmd(char** args) {
     int status;
 
@@ -26,8 +65,11 @@ int tsh_executeCmd(char** args) {
     // create child process
     pid = fork();
     if (pid == 0) {
+        // turn off output postprocessing once child starts
+        toggleOutputPostprocessing();
         // child process execute command
         execvp(args[0], args);
+        // child process exits if execvp can't find the executable in the path
         exit(EXIT_FAILURE);
     } else if (pid < 0 ) {
         // fork error
@@ -36,6 +78,8 @@ int tsh_executeCmd(char** args) {
         // parent process wait for child
         do {waitpid(pid, &status, WUNTRACED);}
         while (!WIFEXITED(status) && !WIFSIGNALED(status));
+        // turn on output postprocessing once child is done
+        toggleOutputPostprocessing();
     }
 
     return 1;
@@ -266,32 +310,6 @@ char* tsh_getLine(char* prompt, int prompt_l) {
     returnLine:
         write(STDOUT_FILENO, "\r\n", sizeof("\r\n"));
         return buffer;
-}
-
-int enableRawTerminal() {
-    struct termios modified_settings;
-
-    // check TTY device
-    if (!isatty(STDIN_FILENO)) {return -1;} 
-
-    // change terminal settings
-    modified_settings = terminal_settings;
-    modified_settings.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-    modified_settings.c_oflag &= ~(OPOST);
-    modified_settings.c_cflag |= (CS8);
-    modified_settings.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-    modified_settings.c_cc[VMIN] = 1; 
-    modified_settings.c_cc[VTIME] = 0;
-
-    // set new terminal settings
-    if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&modified_settings) == -1) {return -1;};
-
-    return 0;
-}
-
-void disableRawTerminal() {
-    // restore initial settings
-    if (pid != 0) {tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings);}
 }
 
 int main(int argc, char **argv) {
