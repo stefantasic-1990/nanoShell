@@ -8,23 +8,20 @@
 #include <sys/ioctl.h>
 
 struct termios terminal_settings;
+int pid = -1;
 
 int tsh_executeCmd(char** args) {
-    int pid;
-    int wpid;
     int status;
 
     // check if token array is empty
-    // NOT SURE IF THIS IS CATCHING
     if (args[0] == NULL) {return -1;}
 
     // check if command is a builtin
     if (strcmp(args[0], "cd") == 0) {
         if (args[1] == NULL) {return 1;}
         if (chdir(args[1]) != 0) {return -1;}
-    } else if (strcmp(args[0], "exit") == 0) {
-        return 0;
-    }
+    } 
+    if (strcmp(args[0], "exit") == 0) {return -1;}
 
     // create child process
     pid = fork();
@@ -37,7 +34,7 @@ int tsh_executeCmd(char** args) {
         return -1;
     } else {
         // parent process wait for child
-        do {wpid = waitpid(pid, &status, WUNTRACED);}
+        do {waitpid(pid, &status, WUNTRACED);}
         while (!WIFEXITED(status) && !WIFSIGNALED(status));
     }
 
@@ -253,7 +250,7 @@ int enableRawTerminal() {
 
 void disableRawTerminal() {
     // restore initial settings
-    tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings);
+    if (pid != 0) {tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings);}
 }
 
 int main(int argc, char **argv) {
@@ -268,7 +265,7 @@ int main(int argc, char **argv) {
     // Enable raw terminal mode
     if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
     if (enableRawTerminal() == -1) {return 1;}
-    // if (atexit(disableRawTerminal) != 0) {return 1;}
+    if (atexit(disableRawTerminal) != 0) {return 1;}
 
     // main program loop
     do {
@@ -279,8 +276,6 @@ int main(int argc, char **argv) {
         // get command line, parse, and execute
         if ((line = tsh_getLine(prompt, prompt_l)) == NULL) {return -1;}
         if ((args = tsh_parseLine(line)) == NULL) {return -1;}
-        if ((status = tsh_executeCmd(args)) == -1) {return -1;}
-    } while (status);
-
-    // disableRawTerminal();
+        if ((tsh_executeCmd(args)) == -1) {return -1;}
+    } while (1);
 }
