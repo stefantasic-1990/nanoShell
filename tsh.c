@@ -110,7 +110,8 @@ char** tsh_parseLine(char* line) {
                     args[args_p][arg_p] = '\0';
                     args[args_p+1] = NULL;
                 } else {args[args_p] = NULL;}
-                // return token array
+                // free line buffer and return token array
+                free(line);
                 return args;
             case '\"':
                 // change quoted mode
