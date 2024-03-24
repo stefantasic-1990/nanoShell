@@ -7,6 +7,6 @@ Personal project implementing a basic shell program in C.
 ## Feature Wishlist
 
 - [x] Single-line editing mode
-- [ ] Command parsing with argument quoting and quote escaping
+- [x] Command parsing with argument quoting and quote escaping
 - [ ] Command piping and redirection
 - [ ] Persistent command history
