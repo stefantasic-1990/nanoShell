@@ -47,6 +47,7 @@ char** tsh_parseLine(char* line) {
     int args_p = 0; // args buffer position
     int arg_s = 20; // arg buffer size
     int arg_p = 0; // arg buffer position
+    int qmode = 0; // quoted mode flag 
     char** args = calloc(args_s, sizeof(char*));
 
     while (1) {
@@ -65,6 +66,11 @@ char** tsh_parseLine(char* line) {
                 } else {args[args_p] = NULL;}
                 // return token array
                 return args;
+            case '\"':
+                // change quoted mode
+                qmode = 1 - qmode;
+                line_p++;
+                break;
             // // if escape character
             case '\\':
                 // get next character and determine escape sequence
@@ -94,12 +100,17 @@ char** tsh_parseLine(char* line) {
                 break;
             // if space character
             case ' ':
+                // only treat as a token separator if not in quoted mode
+                // otherwise we skip down to default and treat as regular character
+                if (qmode == 0) {
+                    // if we are building a token null-terminate it, set next token to NULL
+                    if (arg_p != 0) {
+                        args[args_p][arg_p] = '\0';
+                        }
+                    line_p++;
+                    goto nextToken;
+                }
                 // if we are building a token null-terminate it, set next token to NULL
-                if (arg_p != 0) {
-                    args[args_p][arg_p] = '\0';
-                    }
-                line_p++;
-                goto nextToken;
             // if regular character
             default:
                 // add character to token string
