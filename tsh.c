@@ -82,21 +82,24 @@ char** tsh_parseLine(char* line) {
                     arg_p++;
                     args[args_p][arg_p] = '\n';
                     arg_p++;
+                    line_p++;
                     break;
                 case '\\':
                     args[args_p][arg_p] = '\\';
                     arg_p++;
+                    line_p++;
                     break;
                 case '\"':
                     args[args_p][arg_p] = '\"';
                     arg_p++;
+                    line_p++;
                     break;
                 case '\'':
                     args[args_p][arg_p] = '\'';
                     arg_p++;
+                    line_p++;
                     break;
                 }
-                line_p++;
                 break;
             // if space character
             case ' ':
@@ -269,7 +272,7 @@ int enableRawTerminal() {
     // change terminal settings
     modified_settings = terminal_settings;
     modified_settings.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-    modified_settings.c_oflag &= ~(OPOST);
+    //modified_settings.c_oflag &= ~(OPOST);
     modified_settings.c_cflag |= (CS8);
     modified_settings.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
     modified_settings.c_cc[VMIN] = 1; 
