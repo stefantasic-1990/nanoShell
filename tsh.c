@@ -110,8 +110,6 @@ char** tsh_parseLine(char* line) {
                     args[args_p][arg_p] = '\0';
                     args[args_p+1] = NULL;
                 } else {args[args_p] = NULL;}
-                // free line buffer and return token array
-                free(line);
                 return args;
             case '\"':
                 // change quoted mode
@@ -366,8 +364,10 @@ int main(int argc, char **argv) {
         }
         // get command line, parse, and execute
         // RETURNS HERE JUMP OUT OF PROGRAM IF LINE IS NULL
-        if ((line = tsh_getLine(prompt, prompt_l)) == NULL) {return -1;}
-        if ((args = tsh_parseLine(line)) == NULL) {return -1;}
-        if ((tsh_executeCmd(args)) == -1) {return -1;}
+        line = tsh_getLine(prompt, prompt_l);
+        args = tsh_parseLine(line);
+        tsh_executeCmd(args);
+        free(line);
+        free(args);
     } while (1);
 }
