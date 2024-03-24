@@ -7,21 +7,8 @@
 #include <limits.h>
 #include <sys/ioctl.h>
 
-struct termios terminal_settings;
-int pid = -1;
-
-int toggleOutputPostprocessing() {
-    struct termios modified_settings;
-
-    // change terminal settings
-    if (tcgetattr(STDIN_FILENO, &modified_settings) == -1) {return 1;} 
-    modified_settings.c_oflag ^= (OPOST);
-
-    // set terminal settings
-    if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&modified_settings) == -1) {return -1;};
-
-    return 0;
-}
+struct termios terminal_settings; // original terminal settings
+int pid = -1; // global pid to differentiate parent when doing atexit()
 
 int enableRawTerminal() {
     struct termios modified_settings;
@@ -47,6 +34,19 @@ int enableRawTerminal() {
 void disableRawTerminal() {
     // restore initial settings
     if (pid != 0) {tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings);}
+}
+
+int toggleOutputPostprocessing() {
+    struct termios modified_settings;
+
+    // change terminal settings
+    if (tcgetattr(STDIN_FILENO, &modified_settings) == -1) {return 1;} 
+    modified_settings.c_oflag ^= (OPOST);
+
+    // set terminal settings
+    if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&modified_settings) == -1) {return -1;};
+
+    return 0;
 }
 
 int tsh_executeCmd(char** args) {
