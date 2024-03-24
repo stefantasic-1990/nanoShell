@@ -209,7 +209,6 @@ char* tsh_getLine(char* prompt, int prompt_l) {
     int window_c; // terminal window column width
 
     // initialize line buffer
-    free(buffer);
     buffer = calloc(buffer_s, sizeof(char)); // line buffer
     buffer[0] = '\0';
 
@@ -275,23 +274,38 @@ char* tsh_getLine(char* prompt, int prompt_l) {
                 if (read(STDOUT_FILENO, eseq+1, 1) == -1) {break;}
                 if (eseq[0] == '[') {
                     switch(eseq[1]) {
-                        // right arrow key
-                        case 'C':
+                        case 'C': // right arrow key
                             if (buffer_p < buffer_l) {buffer_p++;}
                             if ((buffer_p - buffer_o) > buffer_dl) {buffer_o++;}
                             break;
-                        // left arrow key
-                        case 'D':
+                        case 'D': // left arrow key
                             if (buffer_p > 0) {buffer_p--;}
                             if ((buffer_p - buffer_o) < 0) {buffer_o--;}
                             break;
-                        // up arrow key
-                        case 'A':
+                        case 'A': // up arrow key
                             // get previous record in history
+                            if ((cmdhis[cmdhis_p + 1] != NULL) && cmdhis_p < (CMD_HISTORY_SIZE - 1)) {
+                                if (cmdhis_p == 0) {cmdhis[0] = strdup(buffer);}
+                                cmdhis_p++;
+                                free(buffer);
+                                buffer = calloc(buffer_s, sizeof(char));
+                                strcpy(buffer, cmdhis[cmdhis_p]);
+                                buffer_p = 0;
+                                buffer_o = 0;
+                                buffer_l = 0;
+                            }
                             break;
-                        // down arrow key
-                        case 'B':
+                        case 'B': // down arrow key
                             // get next record in history
+                            if (cmdhis_p > 0) {
+                                cmdhis_p--;
+                                free(buffer);
+                                buffer = calloc(buffer_s, sizeof(char));
+                                buffer_p = 0;
+                                buffer_o = 0;
+                                buffer_l = 0;
+                                strcpy(buffer, cmdhis[cmdhis_p]);
+                            }
                             break;
                     }
                 }
@@ -314,10 +328,13 @@ char* tsh_getLine(char* prompt, int prompt_l) {
     } while (1);
 
     returnLine:
+        // free first element
+        free(cmdhis[0]);
+        cmdhis[0] = NULL;
         // if command not empty, copy into history
-        if (buffer[0] != '\0') {
+        if (buffer != NULL) {
             // free last element memory
-            free(cmdhis[CMD_HISTORY_SIZE - 1]);
+            //free(cmdhis[CMD_HISTORY_SIZE - 1]);
             // move elements, ignore first which is reserved for current line edit
             memmove(cmdhis + 2, cmdhis + 1, sizeof(cmdhis) - sizeof(char*)*2);
             cmdhis[1] = strdup(buffer);

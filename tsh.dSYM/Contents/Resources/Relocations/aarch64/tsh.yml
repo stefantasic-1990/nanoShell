@@ -1,0 +1,16 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/stefan.tasic/Dev/repos/tsh/tsh'
+relocations:
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _enableRawTerminal, symObjAddr: 0x0, symBinAddr: 0x100002A70, symSize: 0x11C }
+  - { offsetInCU: 0x3F, offset: 0x3F, size: 0x8, addend: 0x0, symName: _pid, symObjAddr: 0x13C8, symBinAddr: 0x100008000, symSize: 0x0 }
+  - { offsetInCU: 0x69, offset: 0x69, size: 0x8, addend: 0x0, symName: _tsh_getLine, symObjAddr: 0x8A0, symBinAddr: 0x100003310, symSize: 0x70C }
+  - { offsetInCU: 0x8E, offset: 0x8E, size: 0x8, addend: 0x0, symName: _tsh_getLine.cmdhis, symObjAddr: 0x2B18, symBinAddr: 0x100008008, symSize: 0x0 }
+  - { offsetInCU: 0x18F, offset: 0x18F, size: 0x8, addend: 0x0, symName: _terminal_settings, symBinAddr: 0x100008030, symSize: 0x0 }
+  - { offsetInCU: 0x242, offset: 0x242, size: 0x8, addend: 0x0, symName: _enableRawTerminal, symObjAddr: 0x0, symBinAddr: 0x100002A70, symSize: 0x11C }
+  - { offsetInCU: 0x26A, offset: 0x26A, size: 0x8, addend: 0x0, symName: _disableRawTerminal, symObjAddr: 0x11C, symBinAddr: 0x100002B8C, symSize: 0x40 }
+  - { offsetInCU: 0x27F, offset: 0x27F, size: 0x8, addend: 0x0, symName: _toggleOutputPostprocessing, symObjAddr: 0x15C, symBinAddr: 0x100002BCC, symSize: 0xC0 }
+  - { offsetInCU: 0x2A7, offset: 0x2A7, size: 0x8, addend: 0x0, symName: _tsh_executeCmd, symObjAddr: 0x21C, symBinAddr: 0x100002C8C, symSize: 0x1E8 }
+  - { offsetInCU: 0x2DD, offset: 0x2DD, size: 0x8, addend: 0x0, symName: _tsh_parseLine, symObjAddr: 0x404, symBinAddr: 0x100002E74, symSize: 0x49C }
+  - { offsetInCU: 0x376, offset: 0x376, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x11B8, symBinAddr: 0x100003C28, symSize: 0x210 }
+...
