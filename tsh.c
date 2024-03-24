@@ -64,13 +64,34 @@ char** tsh_parseLine(char* line) {
                 } else {args[args_p] = NULL;}
                 // return token array
                 return args;
-            // if escape character
+            // // if escape character
             } else if (line[line_p] == '\\') {
                 // get next character and determine escape sequence
-                switch(line[line_p+1]) {
-                // ignore escape character not part of defined escape sequence
-                default:
+                // we ignore the escape character by itself
+                line_p++;
+                switch(line[line_p]) {
+                case 'n':
+                    args[args_p][arg_p] = '\r';
+                    arg_p++;
+                    args[args_p][arg_p] = '\n';
+                    arg_p++;
                     line_p++;
+                    break;
+                case '\\':
+                    args[args_p][arg_p] = '\\';
+                    arg_p++;
+                    line_p++;
+                    break;
+                case '\"':
+                    args[args_p][arg_p] = '\"';
+                    arg_p++;
+                    line_p++;
+                    break;
+                case '\'':
+                    args[args_p][arg_p] = '\'';
+                    arg_p++;
+                    line_p++;
+                    break;
                 }
             // if space character
             } else if (line[line_p] == ' ') {
@@ -223,7 +244,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
     } while (1);
 
     returnLine:
-        write(STDOUT_FILENO, "\n\r", sizeof("\n\r"));
+        write(STDOUT_FILENO, "\r\n", sizeof("\r\n"));
         return buffer;
 }
 
