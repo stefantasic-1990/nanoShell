@@ -62,7 +62,7 @@ int tsh_executeCmd(char** args) {
         if (args[1] == NULL) {return 1;}
         if (chdir(args[1]) != 0) {return -1;}
     } 
-    if (strcmp(args[0], "exit") == 0) {return -1;}
+    if (strcmp(args[0], "exit") == 0) {exit(EXIT_SUCCESS);}
 
     // create child process
     pid = fork();
@@ -241,7 +241,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
                 }
                 break;
             case 3: // ctrl+c
-                return NULL;
+                exit(EXIT_SUCCESS);
             case 4: // ctrl+d
                 break;
             case 20: // ctrl+t
