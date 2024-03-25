@@ -365,7 +365,6 @@ int main(int argc, char **argv) {
             prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
         }
         // get command line, parse, and execute
-        // RETURNS HERE JUMP OUT OF PROGRAM IF LINE IS NULL
         line = tsh_getLine(prompt, prompt_l);
         args = tsh_parseLine(line);
         tsh_executeCmd(args);
