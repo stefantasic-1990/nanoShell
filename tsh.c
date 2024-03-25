@@ -286,23 +286,25 @@ char* tsh_getLine(char* prompt, int prompt_l) {
                             if ((cmdhis[cmdhis_p + 1] != NULL) && cmdhis_p < (CMD_HISTORY_SIZE - 1)) {
                                 if (cmdhis_p == 0) {cmdhis[0] = strdup(buffer);}
                                 cmdhis_p++;
+                                buffer_l = strlen(cmdhis[cmdhis_p]);
+                                buffer_s = strlen(cmdhis[cmdhis_p] + 1);
+                                buffer_p = buffer_l;
+                                buffer_o = (buffer_l < buffer_dl) ? 0 : buffer_l - buffer_dl;
                                 free(buffer);
                                 buffer = calloc(buffer_s, sizeof(char));
                                 strcpy(buffer, cmdhis[cmdhis_p]);
-                                buffer_p = 0;
-                                buffer_o = 0;
-                                buffer_l = 0;
                             }
                             break;
                         case 'B': // down arrow key
                             // get next record in history
                             if (cmdhis_p > 0) {
                                 cmdhis_p--;
+                                buffer_l = strlen(cmdhis[cmdhis_p]);
+                                buffer_s = strlen(cmdhis[cmdhis_p] + 1);
+                                buffer_p = buffer_l;
+                                buffer_o = (buffer_l < buffer_dl) ? 0 : buffer_l - buffer_dl;
                                 free(buffer);
                                 buffer = calloc(buffer_s, sizeof(char));
-                                buffer_p = 0;
-                                buffer_o = 0;
-                                buffer_l = 0;
                                 strcpy(buffer, cmdhis[cmdhis_p]);
                             }
                             break;
@@ -327,13 +329,13 @@ char* tsh_getLine(char* prompt, int prompt_l) {
     } while (1);
 
     returnLine:
-        // free first element
+        // free first history element
         free(cmdhis[0]);
         cmdhis[0] = NULL;
         // if command not empty, copy into history
-        if (buffer != NULL) {
+        if (buffer[0] != '\0') {
             // free last element memory
-            //free(cmdhis[CMD_HISTORY_SIZE - 1]);
+            free(cmdhis[CMD_HISTORY_SIZE - 1]);
             // move elements, ignore first which is reserved for current line edit
             memmove(cmdhis + 2, cmdhis + 1, sizeof(cmdhis) - sizeof(char*)*2);
             cmdhis[1] = strdup(buffer);
