@@ -191,7 +191,7 @@ char** tsh_parseLine(char* line) {
             if (args_p >= args_s) {
             args_s += args_s;
             args = realloc(args, args_s * sizeof(char*));
-            if (!args[args_p]) {return NULL;}
+            if (!args) {return NULL;}
             } 
     }
 }
