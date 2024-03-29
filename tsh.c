@@ -159,9 +159,12 @@ char** tsh_parseLine(char* line) {
                     // if we are building a token null-terminate it, set next token to NULL
                     if (arg_p != 0) {
                         args[args_p][arg_p] = '\0';
+                        line_p++;
+                        goto nextToken;
                         }
+                    // if we are not building a token, ignore the white space
                     line_p++;
-                    goto nextToken;
+                    break;
                 }
                 // if we are building a token null-terminate it, set next token to NULL
             // if regular character
