@@ -321,7 +321,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
                 break;
         }
         // allocate more space for buffer if required
-        if (buffer_l >= buffer_s) {
+        if (buffer_l + 1 >= buffer_s) {
             buffer_s += buffer_s;
             buffer = realloc(buffer, buffer_s);
             if (!buffer) {return NULL;}
