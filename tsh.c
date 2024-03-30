@@ -290,7 +290,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
                                 if (cmdhis_p == 0) {cmdhis[0] = strdup(buffer);}
                                 cmdhis_p++;
                                 buffer_l = strlen(cmdhis[cmdhis_p]);
-                                buffer_s = strlen(cmdhis[cmdhis_p] + 1);
+                                buffer_s = strlen(cmdhis[cmdhis_p]) + 1;
                                 buffer_p = buffer_l;
                                 buffer_o = (buffer_l < buffer_dl) ? 0 : buffer_l - buffer_dl;
                                 free(buffer);
@@ -303,13 +303,13 @@ char* tsh_getLine(char* prompt, int prompt_l) {
                             if (cmdhis_p > 0) {
                                 cmdhis_p--;
                                 buffer_l = strlen(cmdhis[cmdhis_p]);
-                                buffer_s = strlen(cmdhis[cmdhis_p] + 1);
+                                buffer_s = strlen(cmdhis[cmdhis_p]) + 1;
                                 buffer_p = buffer_l;
                                 buffer_o = (buffer_l < buffer_dl) ? 0 : buffer_l - buffer_dl;
                                 free(buffer);
                                 buffer = calloc(buffer_s, sizeof(char));
                                 strcpy(buffer, cmdhis[cmdhis_p]);
-                            }
+                            }    
                             break;
                     }
                 }
