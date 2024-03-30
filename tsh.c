@@ -97,16 +97,12 @@ int tsh_parseCommand(char** args) {
     // check if token array is empty
     if (args[0] == NULL) {return -1;}
 
-    int c;
-    write(STDOUT_FILENO, "break1\n", 6);
-    read(STDIN_FILENO, &c, 1);
+    // int c;
+    // write(STDOUT_FILENO, "break1\n", 6);
+    // read(STDIN_FILENO, &c, 1);
 
     for (int i = 0; 1 ; i++) {
-        write(STDOUT_FILENO, "break2\n", 6);
-        read(STDIN_FILENO, &c, 1);
         if (strcmp(args[i], "\0") == 0) {
-            write(STDOUT_FILENO, "break3\n", 6);
-            read(STDIN_FILENO, &c, 1);
             cmd_len = cmd_end - cmd_start;
             cmd = calloc(cmd_len, sizeof(char*));
             memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
