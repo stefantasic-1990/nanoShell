@@ -51,18 +51,19 @@ int toggleOutputPostprocessing() {
     return 0;
 }
 
-int tsh_executeCmd(char** args) {
+int tsh_executeCmd(char** cmd, int mod) {
     int status;
 
-    // check if token array is empty
-    if (args[0] == NULL) {return -1;}
+    // int c;
+    // write(STDOUT_FILENO, "break8\n", 6);
+    // read(STDIN_FILENO, &c, 1);
 
     // check if command is a builtin
-    if (strcmp(args[0], "cd") == 0) {
-        if (args[1] == NULL) {return 1;}
-        if (chdir(args[1]) != 0) {return -1;}
+    if (strcmp(cmd[0], "cd") == 0) {
+        if (cmd[1] == NULL) {return 1;}
+        if (chdir(cmd[1]) != 0) {return -1;}
     } 
-    if (strcmp(args[0], "exit") == 0) {exit(EXIT_SUCCESS);}
+    if (strcmp(cmd[0], "exit") == 0) {exit(EXIT_SUCCESS);}
 
     // create child process
     pid = fork();
@@ -70,7 +71,7 @@ int tsh_executeCmd(char** args) {
         // turn off output postprocessing once child starts
         toggleOutputPostprocessing();
         // child process execute command
-        execvp(args[0], args);
+        execvp(cmd[0], cmd);
         // child process exits if execvp can't find the executable in the path
         exit(EXIT_FAILURE);
     } else if (pid < 0 ) {
@@ -84,7 +85,56 @@ int tsh_executeCmd(char** args) {
         toggleOutputPostprocessing();
     }
 
-    return 1;
+    return 0;
+}
+
+int tsh_parseCommand(char** args) {
+    int cmd_start = 0;
+    int cmd_end = 0;
+    int cmd_len = 0;
+    char** cmd;
+
+    // check if token array is empty
+    if (args[0] == NULL) {return -1;}
+
+    int c;
+    write(STDOUT_FILENO, "break1\n", 6);
+    read(STDIN_FILENO, &c, 1);
+
+    for (int i = 0; 1 ; i++) {
+        write(STDOUT_FILENO, "break2\n", 6);
+        read(STDIN_FILENO, &c, 1);
+        if (strcmp(args[i], "\0") == 0) {
+            write(STDOUT_FILENO, "break3\n", 6);
+            read(STDIN_FILENO, &c, 1);
+            cmd_len = cmd_end - cmd_start;
+            cmd = calloc(cmd_len, sizeof(char*));
+            memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
+            tsh_executeCmd(cmd, 0);
+            goto end;
+        }
+        if (strcmp(args[i], "&") == 0) {
+            cmd_len = cmd_end - cmd_start;
+            cmd = calloc(cmd_len, sizeof(char*));
+            memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
+            tsh_executeCmd(cmd, '&');
+            cmd_end++;
+            cmd_len = 0;
+            cmd_start = cmd_end;
+        } else if (strcmp(args[i], "|") == 0) {
+            continue;
+        } else if (strcmp(args[i], ">") == 0) {
+            continue;
+        } else if (strcmp(args[i], "<") == 0) {
+            continue;
+        } else {
+            cmd_end++;
+            cmd_len++;
+        }
+    }
+
+    end:
+        return 0;
 }
 
 char** tsh_parseLine(char* line) {
@@ -108,8 +158,8 @@ char** tsh_parseLine(char* line) {
                 // if we are building a token null-terminate it
                 if (arg_p != 0) {
                     args[args_p][arg_p] = '\0';
-                    args[args_p+1] = NULL;
-                } else {args[args_p] = NULL;}
+                    args[args_p+1] = "\0";
+                } else {args[args_p] = "\0";}
                 return args;
             case '\"':
                 // change quoted mode
@@ -370,7 +420,7 @@ int main(int argc, char **argv) {
         // get command line, parse, and execute
         line = tsh_getLine(prompt, prompt_l);
         args = tsh_parseLine(line);
-        tsh_executeCmd(args);
+        tsh_parseCommand(args);
         free(line);
         free(args);
     } while (1);
