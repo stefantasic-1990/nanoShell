@@ -51,25 +51,30 @@ int toggleOutputPostprocessing() {
     return 0;
 }
 
-int tsh_executeCmd(char** cmd, int mod) {
+int tsh_executeCmd(char** cmd, int in, int out) {
     int status;
 
-    // int c;
-    // write(STDOUT_FILENO, "break8\n", 6);
-    // read(STDIN_FILENO, &c, 1);
-
-    // check if command is a builtin
-    if (strcmp(cmd[0], "cd") == 0) {
+    // check if command is builtin
+    if (strcmp(cmd[0], "cd") == 0 && out == 1) {
         if (cmd[1] == NULL) {return 1;}
         if (chdir(cmd[1]) != 0) {return -1;}
     } 
-    if (strcmp(cmd[0], "exit") == 0) {exit(EXIT_SUCCESS);}
+    if (strcmp(cmd[0], "exit") == 0 && out == 1) {
+        exit(EXIT_SUCCESS);
+    }
 
     // create child process
     pid = fork();
     if (pid == 0) {
-        // turn off output postprocessing once child starts
-        toggleOutputPostprocessing();
+        // reidirect input/output
+        if (in != 0) {
+            dup2(in, 0);
+            close (in);
+        }
+        if (out != 1) {
+            dup2(out, 1);
+            close(out);
+        }
         // child process execute command
         execvp(cmd[0], cmd);
         // child process exits if execvp can't find the executable in the path
@@ -77,18 +82,14 @@ int tsh_executeCmd(char** cmd, int mod) {
     } else if (pid < 0 ) {
         // fork error
         return -1;
-    } else {
-        // parent process wait for child
-        do {waitpid(pid, &status, WUNTRACED);}
-        while (!WIFEXITED(status) && !WIFSIGNALED(status));
-        // turn on output postprocessing once child is done
-        toggleOutputPostprocessing();
     }
 
     return 0;
 }
 
 int tsh_parseCommand(char** args) {
+    int pipefd[2];
+    int lastin = 0;
     int cmd_start = 0;
     int cmd_end = 0;
     int cmd_len = 0;
@@ -97,28 +98,37 @@ int tsh_parseCommand(char** args) {
     // check if token array is empty
     if (args[0] == NULL) {return -1;}
 
-    // int c;
-    // write(STDOUT_FILENO, "break1\n", 6);
-    // read(STDIN_FILENO, &c, 1);
+    // turn off output postprocessing
+    toggleOutputPostprocessing();
 
     for (int i = 0; 1 ; i++) {
         if (strcmp(args[i], "\0") == 0) {
             cmd_len = cmd_end - cmd_start;
             cmd = calloc(cmd_len, sizeof(char*));
             memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
-            tsh_executeCmd(cmd, 0);
+            tsh_executeCmd(cmd, lastin, 1);
             goto end;
         }
-        if (strcmp(args[i], "&") == 0) {
+        if (strcmp(args[i], "&&") == 0) {
             cmd_len = cmd_end - cmd_start;
             cmd = calloc(cmd_len, sizeof(char*));
             memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
-            tsh_executeCmd(cmd, '&');
-            cmd_end++;
+            tsh_executeCmd(cmd, lastin, 1);
+            lastin = 0;
             cmd_len = 0;
+            cmd_end++;
             cmd_start = cmd_end;
         } else if (strcmp(args[i], "|") == 0) {
-            continue;
+            cmd_len = cmd_end - cmd_start;
+            cmd = calloc(cmd_len, sizeof(char*));
+            memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
+            pipe(pipefd);
+            tsh_executeCmd(cmd, lastin, pipefd[1]);
+            close(pipefd[1]);
+            lastin = pipefd[0];
+            cmd_len = 0;
+            cmd_end++;
+            cmd_start = cmd_end;
         } else if (strcmp(args[i], ">") == 0) {
             continue;
         } else if (strcmp(args[i], "<") == 0) {
@@ -128,6 +138,9 @@ int tsh_parseCommand(char** args) {
             cmd_len++;
         }
     }
+
+    // turn on output postprocessing
+    toggleOutputPostprocessing();
 
     end:
         return 0;
