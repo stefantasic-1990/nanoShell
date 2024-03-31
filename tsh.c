@@ -82,6 +82,10 @@ int tsh_executeCmd(char** cmd, int in, int out) {
     } else if (pid < 0 ) {
         // fork error
         return -1;
+    } else {
+        // parent process wait for child
+        do {waitpid(pid, &status, WUNTRACED);}
+        while (!WIFEXITED(status) && !WIFSIGNALED(status));
     }
 
     return 0;
@@ -96,7 +100,7 @@ int tsh_parseCommand(char** args) {
     char** cmd;
 
     // check if token array is empty
-    if (args[0] == NULL) {return -1;}
+    if (strcmp(args[0], "\0") == 0) {return 0;}
 
     // turn off output postprocessing
     toggleOutputPostprocessing();
@@ -139,10 +143,9 @@ int tsh_parseCommand(char** args) {
         }
     }
 
-    // turn on output postprocessing
-    toggleOutputPostprocessing();
-
     end:
+        // turn on output postprocessing
+        toggleOutputPostprocessing();
         return 0;
 }
 
