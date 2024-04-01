@@ -8,5 +8,5 @@ Personal project implementing a basic shell program in C.
 
 - [x] Single-line editing mode
 - [x] Command parsing with argument quoting and quote escaping
-- [ ] Command batching, piping, redirection
+- [x] Command batching, piping, redirection
 - [x] Command history
