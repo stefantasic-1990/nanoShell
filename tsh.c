@@ -97,7 +97,9 @@ int tsh_parseCommand(char** args) {
     int cmd_start = 0;
     int cmd_end = 0;
     int cmd_len = 0;
+    char* fn;
     char** cmd;
+    FILE* fp;
 
     // check if token array is empty
     if (strcmp(args[0], "\0") == 0) {return 0;}
@@ -113,7 +115,7 @@ int tsh_parseCommand(char** args) {
             tsh_executeCmd(cmd, lastin, 1);
             goto end;
         }
-        if (strcmp(args[i], "&&") == 0) {
+        if (strcmp(args[i], "&&") == 0 && strcmp(args[i + 1], "\0") != 0) {
             cmd_len = cmd_end - cmd_start;
             cmd = calloc(cmd_len, sizeof(char*));
             memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
@@ -122,7 +124,7 @@ int tsh_parseCommand(char** args) {
             cmd_len = 0;
             cmd_end++;
             cmd_start = cmd_end;
-        } else if (strcmp(args[i], "|") == 0) {
+        } else if (strcmp(args[i], "|") == 0 && strcmp(args[i + 1], "\0") != 0) {
             cmd_len = cmd_end - cmd_start;
             cmd = calloc(cmd_len, sizeof(char*));
             memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
@@ -133,8 +135,17 @@ int tsh_parseCommand(char** args) {
             cmd_len = 0;
             cmd_end++;
             cmd_start = cmd_end;
-        } else if (strcmp(args[i], ">") == 0) {
-            continue;
+        } else if (strcmp(args[i], ">") == 0 && strcmp(args[i+1], "\0") != 0) {
+            cmd_len = cmd_end - cmd_start;
+            cmd = calloc(cmd_len, sizeof(char*));
+            memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
+            fn = args[cmd_end + 1];
+            fp = fopen(fn, "a+");
+            tsh_executeCmd(cmd, lastin, fileno(fp));
+            fclose(fp);
+            memmove(args + 2, args + cmd_start, cmd_len*sizeof(char*));
+            cmd_start += 2;
+            cmd_end++;
         } else if (strcmp(args[i], "<") == 0) {
             continue;
         } else {
