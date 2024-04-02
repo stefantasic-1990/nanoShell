@@ -92,14 +92,15 @@ int tsh_executeCmd(char** cmd, int in, int out) {
 }
 
 int tsh_parseCommand(char** args) {
-    int pipefd[2];
-    int lastin = 0;
-    int cmd_start = 0;
-    int cmd_end = 0;
-    int cmd_len = 0;
-    char* fn;
-    char** cmd;
-    FILE* fp;
+    int pipefd[2]; // pipe file descriptor array
+    int nextin = 0; // file descriptor to be used for next input stream
+    int cmd_start = 0; // command string start index
+    int cmd_end = 0; // command string end index
+    int cmd_len = 0; // command length in arg
+    int i = 0; // loop index
+    char** cmd; // current command arg array
+    char* fn; // file name
+    FILE* fp; // file pointer
 
     // check if token array is empty
     if (strcmp(args[0], "\0") == 0) {return 0;}
@@ -107,51 +108,59 @@ int tsh_parseCommand(char** args) {
     // turn off output postprocessing
     toggleOutputPostprocessing();
 
-    for (int i = 0; 1 ; i++) {
+    // parse args array from left to right and figure out the next command
+    while (1) {
+        // if  null string run command and stop parsing
         if (strcmp(args[i], "\0") == 0) {
             cmd_len = cmd_end - cmd_start;
             cmd = calloc(cmd_len, sizeof(char*));
             memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
-            tsh_executeCmd(cmd, lastin, 1);
+            tsh_executeCmd(cmd, nextin, 1);
             goto end;
-        }
-        if (strcmp(args[i], "&&") == 0 && strcmp(args[i + 1], "\0") != 0) {
+        // if && run command and do no piping or redirection
+        } else if (strcmp(args[i], "&&") == 0 && strcmp(args[i + 1], "\0") != 0) {
             cmd_len = cmd_end - cmd_start;
             cmd = calloc(cmd_len, sizeof(char*));
             memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
-            tsh_executeCmd(cmd, lastin, 1);
-            lastin = 0;
+            tsh_executeCmd(cmd, nextin, 1);
+            nextin = 0;
             cmd_len = 0;
             cmd_end++;
             cmd_start = cmd_end;
+        // if | run command and pipe to next
         } else if (strcmp(args[i], "|") == 0 && strcmp(args[i + 1], "\0") != 0) {
             cmd_len = cmd_end - cmd_start;
             cmd = calloc(cmd_len, sizeof(char*));
             memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
             pipe(pipefd);
-            tsh_executeCmd(cmd, lastin, pipefd[1]);
+            tsh_executeCmd(cmd, nextin, pipefd[1]);
             close(pipefd[1]);
-            lastin = pipefd[0];
+            nextin = pipefd[0];
             cmd_len = 0;
             cmd_end++;
             cmd_start = cmd_end;
+        // if > redirect output stream of current command to given file, run command
         } else if (strcmp(args[i], ">") == 0 && strcmp(args[i+1], "\0") != 0) {
             cmd_len = cmd_end - cmd_start;
             cmd = calloc(cmd_len, sizeof(char*));
             memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
             fn = args[cmd_end + 1];
             fp = fopen(fn, "a+");
-            tsh_executeCmd(cmd, lastin, fileno(fp));
+            tsh_executeCmd(cmd, nextin, fileno(fp));
             fclose(fp);
             memmove(args + 2, args + cmd_start, cmd_len*sizeof(char*));
             cmd_start += 2;
             cmd_end++;
+        // if < redirect input stream of current command to given file, run command
         } else if (strcmp(args[i], "<") == 0) {
             continue;
+        // add arg to current command
         } else {
             cmd_end++;
             cmd_len++;
         }
+        // increment loop index
+        i++;
     }
 
     end:
@@ -440,7 +449,7 @@ int main(int argc, char **argv) {
         if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {return -1;} {
             prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
         }
-        // get command line, parse, and execute
+        // get command line, parse it, and execute
         line = tsh_getLine(prompt, prompt_l);
         args = tsh_parseLine(line);
         tsh_parseCommand(args);
