@@ -278,8 +278,8 @@ char** tsh_parseLine(char* line) {
     }
 }
 
-char* tsh_getLine(char* prompt, int prompt_l) {
-    static char* cmdhis[CMD_HISTORY_SIZE] = {NULL}; // command history
+char* tsh_getLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
+    int cmdhis_s = CMD_HISTORY_SIZE;
     int cmdhis_p = 0; // command history position
     int buffer_s = 100; // line buffer total size
     int buffer_l = 0; // line buffer character length
@@ -368,7 +368,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
                             break;
                         case 'A': // up arrow key
                             // get previous record in history
-                            if ((cmdhis[cmdhis_p + 1] != NULL) && cmdhis_p < (CMD_HISTORY_SIZE - 1)) {
+                            if ((cmdhis[cmdhis_p + 1] != NULL) && cmdhis_p < (cmdhis_s - 1)) {
                                 if (cmdhis_p == 0) {cmdhis[0] = strdup(buffer);}
                                 cmdhis_p++;
                                 buffer_l = strlen(cmdhis[cmdhis_p]);
@@ -420,9 +420,9 @@ char* tsh_getLine(char* prompt, int prompt_l) {
         // if command not empty, copy into history
         if (buffer[0] != '\0') {
             // free last element memory
-            free(cmdhis[CMD_HISTORY_SIZE - 1]);
+            free(cmdhis[cmdhis_s - 1]);
             // move elements, ignore first which is reserved for current line edit
-            memmove(cmdhis + 2, cmdhis + 1, sizeof(cmdhis) - sizeof(char*)*2);
+            memmove(cmdhis + 2, cmdhis + 1, cmdhis_s*sizeof(char*)*2 - sizeof(char*)*2);
             cmdhis[1] = strdup(buffer);
         }
         write(STDOUT_FILENO, "\r\n", sizeof("\r\n"));
@@ -430,6 +430,7 @@ char* tsh_getLine(char* prompt, int prompt_l) {
 }
 
 int main(int argc, char **argv) {
+    char* cmdhis[CMD_HISTORY_SIZE] = {NULL}; // command history
     char host[_POSIX_HOST_NAME_MAX];
     char cwd[PATH_MAX];
     char prompt[50];
@@ -438,10 +439,13 @@ int main(int argc, char **argv) {
     char* line;
     char** args;
 
-    // Enable raw terminal mode
+    // enable raw terminal mode
     if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
     if (enableRawTerminal() == -1) {return 1;}
     if (atexit(disableRawTerminal) != 0) {return 1;}
+
+    // retrieve command history
+
 
     // main program loop
     do {
@@ -450,10 +454,13 @@ int main(int argc, char **argv) {
             prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
         }
         // get command line, parse it, and execute
-        line = tsh_getLine(prompt, prompt_l);
+        line = tsh_getLine(prompt, prompt_l, cmdhis);
         args = tsh_parseLine(line);
         tsh_parseCommand(args);
         free(line);
         free(args);
     } while (1);
+
+    // save command history
+
 }
