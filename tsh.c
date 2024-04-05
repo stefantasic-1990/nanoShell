@@ -456,14 +456,14 @@ int main(int argc, char **argv) {
     rewind(fp);
     while (i < cmdhis_s) {
         getline(&cmd, &cmd_len, fp);
+        // if command available and file is not new
         if (strcmp(cmd, "-\n") != 0 && strcmp(cmd, "\0") != 0) {
-            cmd[strlen(cmd)-1] = '\0'; // overwrite newline character
+            // overwrite newline character and load
+            cmd[strlen(cmd)-1] = '\0';
             cmdhis[i] = strdup(cmd);
         }
         i++;
     }
-
-    // cmdhis[1] = "cool";
 
     // main program loop
     do {
@@ -481,8 +481,10 @@ int main(int argc, char **argv) {
         // save command history
         ftruncate(fileno(fp), 0);
         for (int i = 1; i < cmdhis_s; i++) {
+            // if no command available store dash
             if (cmdhis[i] == NULL) {
                 fprintf(fp, "-\n");
+            // else store command into file
             } else {
                 fprintf(fp, "%s\n", cmdhis[i]);
             }
