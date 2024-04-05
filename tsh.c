@@ -481,14 +481,11 @@ int main(int argc, char **argv) {
         // save command history
         ftruncate(fileno(fp), 0);
         for (int i = 1; i < cmdhis_s; i++) {
-            // if no command available store dash
-            if (cmdhis[i] == NULL) {
-                fprintf(fp, "");
-            // else store command into file
-            } else {
+            // if command available in history store into file
+            if (cmdhis[i] != NULL) {
                 fprintf(fp, "%s\n", cmdhis[i]);
+                fflush(fp);
             }
-            fflush(fp);
         }
     } while (1);
 }
