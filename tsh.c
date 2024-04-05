@@ -7,7 +7,7 @@
 #include <limits.h>
 #include <sys/ioctl.h>
 
-#define CMD_HISTORY_SIZE 10
+#define CMD_HISTORY_SIZE 11
 
 struct termios terminal_settings; // original terminal settings
 int pid = -1; // global pid to differentiate parent when doing atexit()
@@ -90,6 +90,7 @@ int tsh_executeCmd(char** cmd, int in, int out) {
 
     return 0;
 }
+
 
 int tsh_parseCommand(char** args) {
     int pipefd[2]; // pipe file descriptor array
@@ -279,7 +280,7 @@ char** tsh_parseLine(char* line) {
 }
 
 char* tsh_getLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
-    int cmdhis_s = CMD_HISTORY_SIZE;
+    int cmdhis_s = CMD_HISTORY_SIZE; // command history size
     int cmdhis_p = 0; // command history position
     int buffer_s = 100; // line buffer total size
     int buffer_l = 0; // line buffer character length
@@ -429,23 +430,40 @@ char* tsh_getLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
         return buffer;
 }
 
+
 int main(int argc, char **argv) {
+    char host[_POSIX_HOST_NAME_MAX]; // machine hostname
+    char cwd[PATH_MAX]; // current working dir
+    char cmdhisfn[] = "./cmdhis.txt";
+    char prompt[50]; // prompt string
+    char** args; // command line arguments
+    char* line; // command line
     char* cmdhis[CMD_HISTORY_SIZE] = {NULL}; // command history
-    char host[_POSIX_HOST_NAME_MAX];
-    char cwd[PATH_MAX];
-    char prompt[50];
-    int prompt_l;
-    int status;
-    char* line;
-    char** args;
+    int cmdhis_s = CMD_HISTORY_SIZE; // command history size
+    int prompt_l; // prompt character length
+    FILE* fp; // file pointer
+
+    int i = 1;
+    char* cmd;
+    size_t cmd_len;
 
     // enable raw terminal mode
     if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
     if (enableRawTerminal() == -1) {return 1;}
     if (atexit(disableRawTerminal) != 0) {return 1;}
+    // restore command history
+    fp = fopen(cmdhisfn, "a+");
+    rewind(fp);
+    while (i < cmdhis_s) {
+        getline(&cmd, &cmd_len, fp);
+        if (strcmp(cmd, "-\n") != 0 && strcmp(cmd, "\0") != 0) {
+            cmd[strlen(cmd)-1] = '\0'; // overwrite newline character
+            cmdhis[i] = strdup(cmd);
+        }
+        i++;
+    }
 
-    // retrieve command history
-
+    // cmdhis[1] = "cool";
 
     // main program loop
     do {
@@ -457,10 +475,18 @@ int main(int argc, char **argv) {
         line = tsh_getLine(prompt, prompt_l, cmdhis);
         args = tsh_parseLine(line);
         tsh_parseCommand(args);
+        // // free memory
         free(line);
         free(args);
+        // save command history
+        ftruncate(fileno(fp), 0);
+        for (int i = 1; i < cmdhis_s; i++) {
+            if (cmdhis[i] == NULL) {
+                fprintf(fp, "-\n");
+            } else {
+                fprintf(fp, "%s\n", cmdhis[i]);
+            }
+            fflush(fp);
+        }
     } while (1);
-
-    // save command history
-
 }
