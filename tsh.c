@@ -457,7 +457,7 @@ int main(int argc, char **argv) {
     while (i < cmdhis_s) {
         getline(&cmd, &cmd_len, fp);
         // if command available and file is not new
-        if (strcmp(cmd, "-\n") != 0 && strcmp(cmd, "\0") != 0) {
+        if (strcmp(cmd, "\0") != 0) {
             // overwrite newline character and load
             cmd[strlen(cmd)-1] = '\0';
             cmdhis[i] = strdup(cmd);
@@ -483,7 +483,7 @@ int main(int argc, char **argv) {
         for (int i = 1; i < cmdhis_s; i++) {
             // if no command available store dash
             if (cmdhis[i] == NULL) {
-                fprintf(fp, "-\n");
+                fprintf(fp, "");
             // else store command into file
             } else {
                 fprintf(fp, "%s\n", cmdhis[i]);
