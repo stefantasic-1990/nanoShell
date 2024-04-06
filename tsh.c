@@ -434,18 +434,18 @@ char* tsh_getLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
 int main(int argc, char **argv) {
     char host[_POSIX_HOST_NAME_MAX]; // machine hostname
     char cwd[PATH_MAX]; // current working dir
-    char cmdhisfn[] = "./cmdhis.txt";
     char prompt[50]; // prompt string
     char** args; // command line arguments
     char* line; // command line
-    char* cmdhis[CMD_HISTORY_SIZE] = {NULL}; // command history
-    int cmdhis_s = CMD_HISTORY_SIZE; // command history size
     int prompt_l; // prompt character length
     FILE* fp; // file pointer
 
-    int i = 1;
-    char* cmd;
-    size_t cmd_len;
+    int i = 1; // loop index
+    char* cmd; // command
+    size_t cmd_len; // command length
+    int cmdhis_s = CMD_HISTORY_SIZE; // command history size
+    char cmdhisfn[] = "./cmdhis.txt"; // command history file name
+    char* cmdhis[CMD_HISTORY_SIZE] = {NULL}; // command history
 
     // enable raw terminal mode
     if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
