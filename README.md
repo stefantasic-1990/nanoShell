@@ -4,7 +4,7 @@
 
 Personal project implementing a basic shell program in C.
 
-## Wishlist
+## Features
 
 - [x] Single-line editing mode
 - [x] Command parsing with argument quoting and quote escaping
