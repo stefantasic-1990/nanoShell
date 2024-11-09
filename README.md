@@ -1,7 +1,5 @@
 # turtleshell (tsh): a simple shell program in C
 
-## Motivation
-
 Personal project implementing a basic shell program in C.
 
 ## Features
