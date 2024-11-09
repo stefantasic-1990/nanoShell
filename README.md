@@ -1,4 +1,4 @@
-# tsh: a simple shell program in C
+# turtleshell (tsh): a simple shell program in C
 
 ## Motivation
 
