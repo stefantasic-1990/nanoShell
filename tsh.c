@@ -438,16 +438,16 @@ char* tsh_getLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
 
 int restoreCmdHistory() {
     int i = 1; // loop index
-    char* cmd; // command
+    char* cmd = NULL; // command
     size_t cmd_len; // command length
     
     cmdhis_fp = fopen(cmdhis_fn, "a+");
     if (cmdhis_fp == NULL) {
-        perror("Failed to open history file.");
         return -1;
     }
-    rewind(cmdhis_fp);
-    
+
+    rewind(cmdhis_fp);   
+
     while (i < CMD_HISTORY_SIZE) {
         getline(&cmd, &cmd_len, cmdhis_fp);
         // if command available and file is not new
@@ -462,7 +462,6 @@ int restoreCmdHistory() {
     return 0;
 }
 
-
 int main(int argc, char **argv) {
     char host[_POSIX_HOST_NAME_MAX]; // machine hostname
     char cwd[PATH_MAX]; // current working directory
@@ -471,9 +470,9 @@ int main(int argc, char **argv) {
     char* line; // command line
     int prompt_l; // prompt character length
 
-    // INITIALIZATION FUNCTIONS
+    // INITIALIZATION
     if (enableRawTerminal() == -1 || // enable raw terminal mode
-        atexit(disableRawTerminal) != 0 ||// at exit restore initial terminal settings
+        atexit(disableRawTerminal) != 0 || // at exit restore initial terminal settings
         restoreCmdHistory() == -1 // restore command history from file
     ) {
         return -1;
