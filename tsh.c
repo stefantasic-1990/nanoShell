@@ -9,17 +9,11 @@
 
 #define CMD_HISTORY_SIZE 10
 
-FILE* cmd_history_fp; // file pointer
-char cmd_history_fn[] = "./tshcmdhisory.txt"; // command history file name
-char* cmd_history[CMD_HISTORY_SIZE] = {NULL}; // command history
-
 struct termios terminal_settings; // original terminal settings
 int pid = -1; // global pid to differentiate parent when doing atexit()
 
 int enableRawTerminal() {
     struct termios modified_settings;
-
-    if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
 
     // check TTY device
     if (!isatty(STDIN_FILENO)) {return -1;} 
@@ -57,7 +51,7 @@ int toggleOutputPostprocessing() {
     return 0;
 }
 
-int tshExecuteCommand(char** cmd, int in, int out) {
+int tsh_executeCmd(char** cmd, int in, int out) {
     int status;
 
     // check if command is builtin
@@ -98,7 +92,7 @@ int tshExecuteCommand(char** cmd, int in, int out) {
 }
 
 
-int tshParseCommandLine(char** args) {
+int tsh_parseCommand(char** args) {
     int pipefd[2]; // pipe file descriptor array
     int nextin = 0; // file descriptor to be used for next input stream
     int cmd_start = 0; // command string start index
@@ -122,14 +116,14 @@ int tshParseCommandLine(char** args) {
             cmd_len = cmd_end - cmd_start;
             cmd = calloc(cmd_len, sizeof(char*));
             memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
-            tshExecuteCommand(cmd, nextin, 1);
+            tsh_executeCmd(cmd, nextin, 1);
             goto end;
         // if && run command and do no piping or redirection
         } else if (strcmp(args[i], "&&") == 0 && strcmp(args[i + 1], "\0") != 0) {
             cmd_len = cmd_end - cmd_start;
             cmd = calloc(cmd_len, sizeof(char*));
             memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
-            tshExecuteCommand(cmd, nextin, 1);
+            tsh_executeCmd(cmd, nextin, 1);
             nextin = 0;
             cmd_len = 0;
             cmd_end++;
@@ -140,7 +134,7 @@ int tshParseCommandLine(char** args) {
             cmd = calloc(cmd_len, sizeof(char*));
             memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
             pipe(pipefd);
-            tshExecuteCommand(cmd, nextin, pipefd[1]);
+            tsh_executeCmd(cmd, nextin, pipefd[1]);
             close(pipefd[1]);
             nextin = pipefd[0];
             cmd_len = 0;
@@ -153,7 +147,7 @@ int tshParseCommandLine(char** args) {
             memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
             fn = args[cmd_end + 1];
             fp = fopen(fn, "a+");
-            tshExecuteCommand(cmd, nextin, fileno(fp));
+            tsh_executeCmd(cmd, nextin, fileno(fp));
             fclose(fp);
             memmove(args + 2, args + cmd_start, cmd_len*sizeof(char*));
             cmd_start += 2;
@@ -176,7 +170,7 @@ int tshParseCommandLine(char** args) {
         return 0;
 }
 
-char** tshTokenizeLine(char* line) {
+char** tsh_parseLine(char* line) {
     int line_p = 0; // line buffer position
     int args_s = 10; // args buffer size
     int args_p = 0; // args buffer position
@@ -285,9 +279,9 @@ char** tshTokenizeLine(char* line) {
     }
 }
 
-char* tshGetLine(char* prompt, int prompt_l, char* cmd_history[CMD_HISTORY_SIZE]) {
-    int cmd_history_s = CMD_HISTORY_SIZE; // command history size
-    int cmd_history_p = 0; // command history position
+char* tsh_getLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
+    int cmdhis_s = CMD_HISTORY_SIZE; // command history size
+    int cmdhis_p = 0; // command history position
     int buffer_s = 100; // line buffer total size
     int buffer_l = 0; // line buffer character length
     int buffer_p = 0; // line buffer cursor position
@@ -375,29 +369,29 @@ char* tshGetLine(char* prompt, int prompt_l, char* cmd_history[CMD_HISTORY_SIZE]
                             break;
                         case 'A': // up arrow key
                             // get previous record in history
-                            if ((cmd_history[cmd_history_p + 1] != NULL) && cmd_history_p < (cmd_history_s - 1)) {
-                                if (cmd_history == 0) {cmd_history[0] = strdup(buffer);}
-                                cmd_history_p++;
-                                buffer_l = strlen(cmd_history[cmd_history_p]);
-                                buffer_s = strlen(cmd_history[cmd_history_p]) + 1;
+                            if ((cmdhis[cmdhis_p + 1] != NULL) && cmdhis_p < (cmdhis_s - 1)) {
+                                if (cmdhis_p == 0) {cmdhis[0] = strdup(buffer);}
+                                cmdhis_p++;
+                                buffer_l = strlen(cmdhis[cmdhis_p]);
+                                buffer_s = strlen(cmdhis[cmdhis_p]) + 1;
                                 buffer_p = buffer_l;
                                 buffer_o = (buffer_l < buffer_dl) ? 0 : buffer_l - buffer_dl;
                                 free(buffer);
                                 buffer = calloc(buffer_s, sizeof(char));
-                                strcpy(buffer, cmd_history[cmd_history_p]);
+                                strcpy(buffer, cmdhis[cmdhis_p]);
                             }
                             break;
                         case 'B': // down arrow key
                             // get next record in history
-                            if (cmd_history_p > 0) {
-                                cmd_history_p--;
-                                buffer_l = strlen(cmd_history[cmd_history_p]);
-                                buffer_s = strlen(cmd_history[cmd_history_p]) + 1;
+                            if (cmdhis_p > 0) {
+                                cmdhis_p--;
+                                buffer_l = strlen(cmdhis[cmdhis_p]);
+                                buffer_s = strlen(cmdhis[cmdhis_p]) + 1;
                                 buffer_p = buffer_l;
                                 buffer_o = (buffer_l < buffer_dl) ? 0 : buffer_l - buffer_dl;
                                 free(buffer);
                                 buffer = calloc(buffer_s, sizeof(char));
-                                strcpy(buffer, cmd_history[cmd_history_p]);
+                                strcpy(buffer, cmdhis[cmdhis_p]);
                             }    
                             break;
                     }
@@ -422,89 +416,75 @@ char* tshGetLine(char* prompt, int prompt_l, char* cmd_history[CMD_HISTORY_SIZE]
 
     returnLine:
         // free first history element
-        free(cmd_history[0]);
-        cmd_history[0] = NULL;
+        free(cmdhis[0]);
+        cmdhis[0] = NULL;
         // if command not empty, copy into history
         if (buffer[0] != '\0') {
             // free last element memory
-            free(cmd_history[cmd_history_s - 1]);
+            free(cmdhis[cmdhis_s - 1]);
             // move elements, ignore first which is reserved for current line edit
-            memmove(cmd_history + 2, cmd_history + 1, cmd_history_s*sizeof(char*)*2 - sizeof(char*)*2);
-            cmd_history[1] = strdup(buffer);
+            memmove(cmdhis + 2, cmdhis + 1, cmdhis_s*sizeof(char*)*2 - sizeof(char*)*2);
+            cmdhis[1] = strdup(buffer);
         }
         write(STDOUT_FILENO, "\r\n", sizeof("\r\n"));
         return buffer;
 }
 
-int restoreCmdHistory() {
-    int i = 1; // loop index
-    char* cmd = NULL; // command
-    size_t cmd_len; // command length
-    
-    cmd_history_fp = fopen(cmd_history_fn, "a+");
-    if (cmd_history_fp == NULL) {
-        return -1;
-    }
-
-    rewind(cmd_history_fp);   
-
-    while (i < CMD_HISTORY_SIZE) {
-        getline(&cmd, &cmd_len, cmd_history_fp);
-        // if command available and file is not new
-        if (strcmp(cmd, "\0") != 0) {
-            // overwrite newline character and load
-            cmd[strlen(cmd)-1] = '\0';
-            cmd_history[i] = strdup(cmd);
-        }
-        i++;
-    }
-
-    return 0;
-}
 
 int main(int argc, char **argv) {
     char host[_POSIX_HOST_NAME_MAX]; // machine hostname
     char cwd[PATH_MAX]; // current working directory
-    char prompt[50]; // prompt
-    char** cmd_tokens; // command line tokens
-    char* cmd_line; // command line
+    char prompt[50]; // prompt string
+    char** args; // command line tokens
+    char* line; // command line
     int prompt_l; // prompt character length
+    FILE* fp; // file pointer
 
-    // INITIALIZATION
-    if (enableRawTerminal() == -1 || // enable raw terminal mode
-        atexit(disableRawTerminal) != 0 || // at exit restore initial terminal settings
-        restoreCmdHistory() == -1 // restore command history from file
-    ) {
-        return -1;
+    int i = 1; // loop index
+    char* cmd; // command
+    size_t cmd_len; // command length
+    int cmdhis_s = CMD_HISTORY_SIZE; // command history size
+    char cmdhisfn[] = "./cmdhis.txt"; // command history file name
+    char* cmdhis[CMD_HISTORY_SIZE] = {NULL}; // command history
+
+    // enable raw terminal mode
+    if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
+    if (enableRawTerminal() == -1) {return 1;}
+    if (atexit(disableRawTerminal) != 0) {return 1;}
+    // restore command history
+    fp = fopen(cmdhisfn, "a+");
+    rewind(fp);
+    while (i < cmdhis_s) {
+        getline(&cmd, &cmd_len, fp);
+        // if command available and file is not new
+        if (strcmp(cmd, "\0") != 0) {
+            // overwrite newline character and load
+            cmd[strlen(cmd)-1] = '\0';
+            cmdhis[i] = strdup(cmd);
+        }
+        i++;
     }
 
-    // COMMAND LOOP
+    // main program loop
     do {
-        // get hostname and current working directory
-        if (gethostname(host, sizeof(host)) == -1 || 
-            getcwd(cwd, sizeof(cwd)) == NULL
-        ) {
-            return -1;
-        }
-
-        // create shell prompt and get its length
+        // assemble prompt string and get its length
+        if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {return -1;}
         prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
-
-        // get-parse-execute the command line
-        cmd_line = tshGetLine(prompt, prompt_l, cmd_history);
-        cmd_tokens = tshTokenizeLine(cmd_line);
-        tshParseCommandLine(cmd_tokens);
-
+        // get command line, parse it, and execute
+        line = tsh_getLine(prompt, prompt_l, cmdhis);
+        args = tsh_parseLine(line);
+        tsh_parseCommand(args);
+        // // free memory
+        free(line);
+        free(args);
         // save command history
-        cmd_history_fp = fopen(cmd_history_fn, "a+");
-        ftruncate(fileno(cmd_history_fp), 0);
-        for (int i = 1; i < CMD_HISTORY_SIZE; i++) {
-            if (cmd_history[i] != NULL) {
-                fprintf(cmd_history_fp, "%s\n", cmd_history[i]);
-                fflush(cmd_history_fp);
+        ftruncate(fileno(fp), 0);
+        for (int i = 1; i < cmdhis_s; i++) {
+            // if command available in history store into file
+            if (cmdhis[i] != NULL) {
+                fprintf(fp, "%s\n", cmdhis[i]);
+                fflush(fp);
             }
         }
-        free(cmd_line);
-        free(cmd_tokens);
     } while (1);
 }
