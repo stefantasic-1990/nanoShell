@@ -9,11 +9,17 @@
 
 #define CMD_HISTORY_SIZE 10
 
+FILE* cmdhis_fp; // file pointer
+char cmdhis_fn[] = "./cmdhis.txt"; // command history file name
+char* cmdhis[CMD_HISTORY_SIZE] = {NULL}; // command history
+
 struct termios terminal_settings; // original terminal settings
 int pid = -1; // global pid to differentiate parent when doing atexit()
 
 int enableRawTerminal() {
     struct termios modified_settings;
+
+    if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
 
     // check TTY device
     if (!isatty(STDIN_FILENO)) {return -1;} 
@@ -430,32 +436,16 @@ char* tsh_getLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
         return buffer;
 }
 
-
-int main(int argc, char **argv) {
-    char host[_POSIX_HOST_NAME_MAX]; // machine hostname
-    char cwd[PATH_MAX]; // current working dir
-    char prompt[50]; // prompt string
-    char** args; // command line arguments
-    char* line; // command line
-    int prompt_l; // prompt character length
-    FILE* fp; // file pointer
-
+char** restoreCmdHistory() {
     int i = 1; // loop index
     char* cmd; // command
     size_t cmd_len; // command length
-    int cmdhis_s = CMD_HISTORY_SIZE; // command history size
-    char cmdhisfn[] = "./cmdhis.txt"; // command history file name
-    char* cmdhis[CMD_HISTORY_SIZE] = {NULL}; // command history
-
-    // enable raw terminal mode
-    if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
-    if (enableRawTerminal() == -1) {return 1;}
-    if (atexit(disableRawTerminal) != 0) {return 1;}
+    
     // restore command history
-    fp = fopen(cmdhisfn, "a+");
-    rewind(fp);
-    while (i < cmdhis_s) {
-        getline(&cmd, &cmd_len, fp);
+    cmdhis_fp = fopen(cmdhis_fn, "a+");
+    rewind(cmdhis_fp);
+    while (i < CMD_HISTORY_SIZE) {
+        getline(&cmd, &cmd_len, cmdhis_fp);
         // if command available and file is not new
         if (strcmp(cmd, "\0") != 0) {
             // overwrite newline character and load
@@ -465,26 +455,44 @@ int main(int argc, char **argv) {
         i++;
     }
 
+    return cmdhis;
+}
+
+
+int main(int argc, char **argv) {
+    char host[_POSIX_HOST_NAME_MAX]; // machine hostname
+    char cwd[PATH_MAX]; // current working directory
+    char prompt[50]; // prompt
+    char** tokens; // command line tokens
+    char* line; // command line
+    int prompt_l; // prompt character length
+
+    if (enableRawTerminal() == -1) {return -1;} // enable raw terminal mode
+    if (atexit(disableRawTerminal) != 0) {return -1;} // at exit restore initial terminal settings
+    if (restoreCmdHistory() == NULL) {return -1;} // restore command history
+
     // main program loop
     do {
-        // assemble prompt string and get its length
+        // create shell prompt and get its length
         if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {return -1;}
         prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
-        // get command line, parse it, and execute
+
+        // get-parse-execute the command line
         line = tsh_getLine(prompt, prompt_l, cmdhis);
-        args = tsh_parseLine(line);
-        tsh_parseCommand(args);
-        // // free memory
-        free(line);
-        free(args);
+        tokens = tsh_parseLine(line);
+        tsh_parseCommand(tokens);
+
         // save command history
-        ftruncate(fileno(fp), 0);
-        for (int i = 1; i < cmdhis_s; i++) {
+        cmdhis_fp = fopen(cmdhis_fn, "a+");
+        ftruncate(fileno(cmdhis_fp), 0);
+        for (int i = 1; i < CMD_HISTORY_SIZE; i++) {
             // if command available in history store into file
             if (cmdhis[i] != NULL) {
-                fprintf(fp, "%s\n", cmdhis[i]);
-                fflush(fp);
+                fprintf(cmdhis_fp, "%s\n", cmdhis[i]);
+                fflush(cmdhis_fp);
             }
         }
+        free(line);
+        free(tokens);
     } while (1);
 }
