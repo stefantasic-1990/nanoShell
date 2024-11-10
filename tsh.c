@@ -451,6 +451,7 @@ int main(int argc, char **argv) {
     if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
     if (enableRawTerminal() == -1) {return 1;}
     if (atexit(disableRawTerminal) != 0) {return 1;}
+    
     // restore command history
     fp = fopen(cmdhisfn, "a+");
     rewind(fp);
@@ -468,9 +469,8 @@ int main(int argc, char **argv) {
     // main program loop
     do {
         // assemble prompt string and get its length
-        if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {return -1;} {
-            prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
-        }
+        if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {return -1;}
+        prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
         // get command line, parse it, and execute
         line = tsh_getLine(prompt, prompt_l, cmdhis);
         args = tsh_parseLine(line);
