@@ -436,7 +436,7 @@ char* tsh_getLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
         return buffer;
 }
 
-char** restoreCmdHistory() {
+int restoreCmdHistory() {
     int i = 1; // loop index
     char* cmd; // command
     size_t cmd_len; // command length
@@ -444,9 +444,8 @@ char** restoreCmdHistory() {
     cmdhis_fp = fopen(cmdhis_fn, "a+");
     if (cmdhis_fp == NULL) {
         perror("Failed to open history file.");
-        return NULL;
+        return -1;
     }
-
     rewind(cmdhis_fp);
     
     while (i < CMD_HISTORY_SIZE) {
@@ -460,7 +459,7 @@ char** restoreCmdHistory() {
         i++;
     }
 
-    return cmdhis;
+    return 0;
 }
 
 
@@ -468,14 +467,14 @@ int main(int argc, char **argv) {
     char host[_POSIX_HOST_NAME_MAX]; // machine hostname
     char cwd[PATH_MAX]; // current working directory
     char prompt[50]; // prompt
-    char** cmd_tokens; // command line tokens
-    char* cmd_line; // command line
+    char** tokens; // command line tokens
+    char* line; // command line
     int prompt_l; // prompt character length
 
     // INITIALIZATION FUNCTIONS
     if (enableRawTerminal() == -1 || // enable raw terminal mode
-        atexit(disableRawTerminal) != 0 || // at exit restore initial terminal settings
-        restoreCmdHistory() == NULL // restore command history from file
+        atexit(disableRawTerminal) != 0 ||// at exit restore initial terminal settings
+        restoreCmdHistory() == -1 // restore command history from file
     ) {
         return -1;
     }
@@ -487,9 +486,9 @@ int main(int argc, char **argv) {
         prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
 
         // get-parse-execute the command line
-        cmd_line = tsh_getLine(prompt, prompt_l, cmdhis);
-        cmd_tokens = tsh_parseLine(cmd_line);
-        tsh_parseCommand(cmd_tokens);
+        line = tsh_getLine(prompt, prompt_l, cmdhis);
+        tokens = tsh_parseLine(line);
+        tsh_parseCommand(tokens);
 
         // save command history
         cmdhis_fp = fopen(cmdhis_fn, "a+");
@@ -500,8 +499,7 @@ int main(int argc, char **argv) {
                 fflush(cmdhis_fp);
             }
         }
-
-        free(cmd_line);
-        free(cmd_tokens);
+        free(line);
+        free(tokens);
     } while (1);
 }
