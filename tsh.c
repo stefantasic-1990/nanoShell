@@ -441,9 +441,14 @@ char** restoreCmdHistory() {
     char* cmd; // command
     size_t cmd_len; // command length
     
-    // restore command history
     cmdhis_fp = fopen(cmdhis_fn, "a+");
+    if (cmdhis_fp == NULL) {
+        perror("Failed to open history file.");
+        return NULL;
+    }
+
     rewind(cmdhis_fp);
+    
     while (i < CMD_HISTORY_SIZE) {
         getline(&cmd, &cmd_len, cmdhis_fp);
         // if command available and file is not new
@@ -463,36 +468,40 @@ int main(int argc, char **argv) {
     char host[_POSIX_HOST_NAME_MAX]; // machine hostname
     char cwd[PATH_MAX]; // current working directory
     char prompt[50]; // prompt
-    char** tokens; // command line tokens
-    char* line; // command line
+    char** cmd_tokens; // command line tokens
+    char* cmd_line; // command line
     int prompt_l; // prompt character length
 
-    if (enableRawTerminal() == -1) {return -1;} // enable raw terminal mode
-    if (atexit(disableRawTerminal) != 0) {return -1;} // at exit restore initial terminal settings
-    if (restoreCmdHistory() == NULL) {return -1;} // restore command history
+    // INITIALIZATION FUNCTIONS
+    if (enableRawTerminal() == -1 || // enable raw terminal mode
+        atexit(disableRawTerminal) != 0 || // at exit restore initial terminal settings
+        restoreCmdHistory() == NULL // restore command history from file
+    ) {
+        return -1;
+    }
 
-    // main program loop
+    // COMMAND LOOP
     do {
         // create shell prompt and get its length
         if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {return -1;}
         prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
 
         // get-parse-execute the command line
-        line = tsh_getLine(prompt, prompt_l, cmdhis);
-        tokens = tsh_parseLine(line);
-        tsh_parseCommand(tokens);
+        cmd_line = tsh_getLine(prompt, prompt_l, cmdhis);
+        cmd_tokens = tsh_parseLine(cmd_line);
+        tsh_parseCommand(cmd_tokens);
 
         // save command history
         cmdhis_fp = fopen(cmdhis_fn, "a+");
         ftruncate(fileno(cmdhis_fp), 0);
         for (int i = 1; i < CMD_HISTORY_SIZE; i++) {
-            // if command available in history store into file
             if (cmdhis[i] != NULL) {
                 fprintf(cmdhis_fp, "%s\n", cmdhis[i]);
                 fflush(cmdhis_fp);
             }
         }
-        free(line);
-        free(tokens);
+
+        free(cmd_line);
+        free(cmd_tokens);
     } while (1);
 }
