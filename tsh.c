@@ -7,7 +7,7 @@
 #include <limits.h>
 #include <sys/ioctl.h>
 
-#define CMD_HISTORY_SIZE 11
+#define CMD_HISTORY_SIZE 10
 
 struct termios terminal_settings; // original terminal settings
 int pid = -1; // global pid to differentiate parent when doing atexit()
@@ -451,7 +451,6 @@ int main(int argc, char **argv) {
     if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
     if (enableRawTerminal() == -1) {return 1;}
     if (atexit(disableRawTerminal) != 0) {return 1;}
-    
     // restore command history
     fp = fopen(cmdhisfn, "a+");
     rewind(fp);
