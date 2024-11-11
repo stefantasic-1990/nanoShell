@@ -9,44 +9,47 @@
 
 #define CMD_HISTORY_SIZE 10
 
-struct termios terminal_settings; // original terminal settings
+struct termios initial_terminal_settings; // original terminal settings
 int pid = -1; // global pid to differentiate parent when doing atexit()
 
 int enableRawTerminal() {
-    struct termios modified_settings;
+    struct termios modified_terminal_settings;
+
+    // save initial terminal settings
+    if (tcgetattr(STDIN_FILENO, &initial_terminal_settings) == -1) {return 1;} 
 
     // check TTY device
     if (!isatty(STDIN_FILENO)) {return -1;} 
 
     // change terminal settings
-    if (tcgetattr(STDIN_FILENO, &modified_settings) == -1) {return 1;} 
-    modified_settings.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-    modified_settings.c_oflag &= ~(OPOST);
-    modified_settings.c_cflag |= (CS8);
-    modified_settings.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-    modified_settings.c_cc[VMIN] = 1; 
-    modified_settings.c_cc[VTIME] = 0;
+    if (tcgetattr(STDIN_FILENO, &modified_terminal_settings) == -1) {return 1;} 
+    modified_terminal_settings.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+    modified_terminal_settings.c_oflag &= ~(OPOST);
+    modified_terminal_settings.c_cflag |= (CS8);
+    modified_terminal_settings.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+    modified_terminal_settings.c_cc[VMIN] = 1; 
+    modified_terminal_settings.c_cc[VTIME] = 0;
 
     // set new terminal settings
-    if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&modified_settings) == -1) {return -1;};
+    if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&modified_terminal_settings) == -1) {return -1;};
 
     return 0;
 }
 
 void disableRawTerminal() {
     // restore initial settings
-    if (pid != 0) {tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings);}
+    if (pid != 0) {tcsetattr(STDIN_FILENO,TCSAFLUSH,&initial_terminal_settings);}
 }
 
 int toggleOutputPostprocessing() {
-    struct termios modified_settings;
+    struct termios modified_terminal_settings;
 
     // change terminal settings
-    if (tcgetattr(STDIN_FILENO, &modified_settings) == -1) {return 1;} 
-    modified_settings.c_oflag ^= (OPOST);
+    if (tcgetattr(STDIN_FILENO, &modified_terminal_settings) == -1) {return 1;} 
+    modified_terminal_settings.c_oflag ^= (OPOST);
 
     // set terminal settings
-    if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&modified_settings) == -1) {return -1;};
+    if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&modified_terminal_settings) == -1) {return -1;};
 
     return 0;
 }
@@ -448,9 +451,10 @@ int main(int argc, char **argv) {
     char* cmdhis[CMD_HISTORY_SIZE] = {NULL}; // command history
 
     // enable raw terminal mode
-    if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
-    if (enableRawTerminal() == -1) {return 1;}
-    if (atexit(disableRawTerminal) != 0) {return 1;}
+    if (enableRawTerminal() == -1) {return -1;}
+    // ensure that terminal settings are restored at shell exit
+    if (atexit(disableRawTerminal) != 0) {return -1;}
+
     // restore command history
     fp = fopen(cmdhisfn, "a+");
     rewind(fp);
