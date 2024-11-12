@@ -282,7 +282,7 @@ char** tsh_parseLine(char* line) {
     }
 }
 
-char* tsh_getLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
+char* tshGetLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
     int cmdhis_s = CMD_HISTORY_SIZE; // command history size
     int cmdhis_p = 0; // command history position
     int buffer_s = 100; // line buffer total size
@@ -475,7 +475,7 @@ int main(int argc, char **argv) {
         if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {return -1;}
         prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
         // get command line, parse it, and execute
-        line = tsh_getLine(prompt, prompt_l, cmdhis);
+        line = tshGetLine(prompt, prompt_l, cmdhis);
         args = tsh_parseLine(line);
         tsh_parseCommand(args);
         // // free memory
