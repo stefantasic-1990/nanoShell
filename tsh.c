@@ -174,11 +174,11 @@ int tsh_parseCommand(char** args) {
 }
 
 char** tsh_parseLine(char* line) {
-    int line_p = 0; // line buffer position
-    int args_s = 10; // args buffer size
-    int args_p = 0; // args buffer position
-    int arg_s = 20; // arg buffer size
-    int arg_p = 0; // arg buffer position
+    int line_p = 0; // line buff position
+    int args_s = 10; // args buff size
+    int args_p = 0; // args buff position
+    int arg_s = 20; // arg buff size
+    int arg_p = 0; // arg buff position
     int qmode = 0; // quoted mode flag 
     char** args = calloc(args_s, sizeof(char*));
 
@@ -282,51 +282,52 @@ char** tsh_parseLine(char* line) {
     }
 }
 
-char* tshGetLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
-    int cmdhis_s = CMD_HISTORY_SIZE; // command history size
+char* tshGetCommandLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
+    int window_width; // terminal window column width    
     int cmdhis_p = 0; // command history position
-    int buffer_s = 100; // line buffer total size
-    int buffer_l = 0; // line buffer character length
-    int buffer_p = 0; // line buffer cursor position
-    int buffer_o = 0; // line buffer display offset
-    int buffer_dl = 0; // line buffer display length
-    char* buffer; // line buffer
+
+    char* buff; // input line buffer
+    int buff_total_size = 100; // input line buffer total size
+    int buff_char_len = 0; // input line buffer character length
+    int buff_curs_pos = 0; // input line buffer cursor position
+    int buff_disp_off = 0; // input line buffer display offset
+    int buff_disp_len = 0; // input line buffer display length
+
     char cursor_p[10]; // cursor position escape sequence
-    char c; // input character
     char eseq[3]; // input escape sequence
-    int window_c; // terminal window column width
+    char c; // input character
 
     // initialize line buffer
-    buffer = calloc(buffer_s, sizeof(char)); // line buffer
-    buffer[0] = '\0';
+    buff = calloc(buff_total_size, sizeof(char)); // line buffer
+    buff[0] = '\0';
 
     // get line display length
     struct winsize ws;
-    if (ioctl(1, TIOCGWINSZ, &ws) == -1) {window_c = 80;} else {window_c = ws.ws_col - 1;}
-    buffer_dl = window_c - prompt_l;
+    if (ioctl(1, TIOCGWINSZ, &ws) == -1) {window_width = 80;} else {window_width = ws.ws_col - 1;}
+    buff_disp_len = window_width - prompt_l;
 
     do {
         // refresh line
-        snprintf(cursor_p, sizeof(cursor_p), "\x1b[%iG", prompt_l + 1 + buffer_p - buffer_o);
+        snprintf(cursor_p, sizeof(cursor_p), "\x1b[%iG", prompt_l + 1 + buff_curs_pos - buff_disp_off);
         write(STDOUT_FILENO, "\x1b[0G", strlen("\x1b[0G"));
         write(STDOUT_FILENO, prompt, prompt_l);
-        write(STDOUT_FILENO, (buffer + buffer_o), (buffer_s < buffer_dl) ? buffer_s : buffer_dl);
+        write(STDOUT_FILENO, (buff + buff_disp_off), (buff_total_size < buff_disp_len) ? buff_total_size : buff_disp_len);
         write(STDOUT_FILENO, "\x1b[0K", strlen("\x1b[0K"));
         write(STDOUT_FILENO, cursor_p, strlen(cursor_p));
         // read-in next character
         read(STDIN_FILENO, &c, 1);
 
-        // handle character
+        // handle key
         switch(c) {
             case 13: // enter
                 goto returnLine;
             case 8: // ctrl+h
             case 127: // backspace
-                if (buffer_p > 0) {
-                    memmove(buffer+(buffer_p-1), buffer+buffer_p , buffer_l - buffer_p);
-                    buffer_p--;
-                    buffer_l--;
-                    buffer[buffer_l] = '\0';
+                if (buff_curs_pos > 0) {
+                    memmove(buff+(buff_curs_pos-1), buff+buff_curs_pos , buff_char_len - buff_curs_pos);
+                    buff_curs_pos--;
+                    buff_char_len--;
+                    buff[buff_char_len] = '\0';
                 }
                 break;
             case 3: // ctrl+c
@@ -349,12 +350,12 @@ char* tshGetLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
                 break;
             case 23: // ctrl+w
                 break;
-            case 21: // ctrl+u
-                free(buffer);
-                buffer = calloc(buffer_s, sizeof(char));
-                buffer_p = 0;
-                buffer_o = 0;
-                buffer_l = 0;
+            case 21: // ctrl+u - clear input
+                free(buff);
+                buff = calloc(buff_total_size, sizeof(char));
+                buff_curs_pos = 0;
+                buff_disp_off = 0;
+                buff_char_len = 0;
                 break;
             case 27: // escape character
                 // read-in the next two characters
@@ -363,57 +364,57 @@ char* tshGetLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
                 if (eseq[0] == '[') {
                     switch(eseq[1]) {
                         case 'C': // right arrow key
-                            if (buffer_p < buffer_l) {buffer_p++;}
-                            if ((buffer_p - buffer_o) > buffer_dl) {buffer_o++;}
+                            if (buff_curs_pos < buff_char_len) {buff_curs_pos++;}
+                            if ((buff_curs_pos - buff_disp_off) > buff_disp_len) {buff_disp_off++;}
                             break;
                         case 'D': // left arrow key
-                            if (buffer_p > 0) {buffer_p--;}
-                            if ((buffer_p - buffer_o) < 0) {buffer_o--;}
+                            if (buff_curs_pos > 0) {buff_curs_pos--;}
+                            if ((buff_curs_pos - buff_disp_off) < 0) {buff_disp_off--;}
                             break;
                         case 'A': // up arrow key
                             // get previous record in history
-                            if ((cmdhis[cmdhis_p + 1] != NULL) && cmdhis_p < (cmdhis_s - 1)) {
-                                if (cmdhis_p == 0) {cmdhis[0] = strdup(buffer);}
+                            if ((cmdhis[cmdhis_p + 1] != NULL) && cmdhis_p < (CMD_HISTORY_SIZE - 1)) {
+                                if (cmdhis_p == 0) {cmdhis[0] = strdup(buff);}
                                 cmdhis_p++;
-                                buffer_l = strlen(cmdhis[cmdhis_p]);
-                                buffer_s = strlen(cmdhis[cmdhis_p]) + 1;
-                                buffer_p = buffer_l;
-                                buffer_o = (buffer_l < buffer_dl) ? 0 : buffer_l - buffer_dl;
-                                free(buffer);
-                                buffer = calloc(buffer_s, sizeof(char));
-                                strcpy(buffer, cmdhis[cmdhis_p]);
+                                buff_char_len = strlen(cmdhis[cmdhis_p]);
+                                buff_total_size = strlen(cmdhis[cmdhis_p]) + 1;
+                                buff_curs_pos = buff_char_len;
+                                buff_disp_off = (buff_char_len < buff_disp_len) ? 0 : buff_char_len - buff_disp_len;
+                                free(buff);
+                                buff = calloc(buff_total_size, sizeof(char));
+                                strcpy(buff, cmdhis[cmdhis_p]);
                             }
                             break;
                         case 'B': // down arrow key
                             // get next record in history
                             if (cmdhis_p > 0) {
                                 cmdhis_p--;
-                                buffer_l = strlen(cmdhis[cmdhis_p]);
-                                buffer_s = strlen(cmdhis[cmdhis_p]) + 1;
-                                buffer_p = buffer_l;
-                                buffer_o = (buffer_l < buffer_dl) ? 0 : buffer_l - buffer_dl;
-                                free(buffer);
-                                buffer = calloc(buffer_s, sizeof(char));
-                                strcpy(buffer, cmdhis[cmdhis_p]);
+                                buff_char_len = strlen(cmdhis[cmdhis_p]);
+                                buff_total_size = strlen(cmdhis[cmdhis_p]) + 1;
+                                buff_curs_pos = buff_char_len;
+                                buff_disp_off = (buff_char_len < buff_disp_len) ? 0 : buff_char_len - buff_disp_len;
+                                free(buff);
+                                buff = calloc(buff_total_size, sizeof(char));
+                                strcpy(buff, cmdhis[cmdhis_p]);
                             }    
                             break;
                     }
                 }
                 break;
-            default: // store character in buffer
-                memmove(buffer+buffer_p+1, buffer+buffer_p, buffer_l - buffer_p);
-                buffer[buffer_p] = c;
-                buffer_p++;
-                buffer_l++;
-                buffer[buffer_l] = '\0';
-                if ((buffer_p - buffer_o) > buffer_dl) {buffer_o++;}
+            default: // store character in buff
+                memmove(buff+buff_curs_pos+1, buff+buff_curs_pos, buff_char_len - buff_curs_pos);
+                buff[buff_curs_pos] = c;
+                buff_curs_pos++;
+                buff_char_len++;
+                buff[buff_char_len] = '\0';
+                if ((buff_curs_pos - buff_disp_off) > buff_disp_len) {buff_disp_off++;}
                 break;
         }
-        // allocate more space for buffer if required
-        if (buffer_l + 1 >= buffer_s) {
-            buffer_s += buffer_s;
-            buffer = realloc(buffer, buffer_s);
-            if (!buffer) {return NULL;}
+        // allocate more space for buff if required
+        if (buff_char_len + 1 >= buff_total_size) {
+            buff_total_size += buff_total_size;
+            buff = realloc(buff, buff_total_size);
+            if (!buff) {return NULL;}
         }
     } while (1);
 
@@ -422,15 +423,15 @@ char* tshGetLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
         free(cmdhis[0]);
         cmdhis[0] = NULL;
         // if command not empty, copy into history
-        if (buffer[0] != '\0') {
+        if (buff[0] != '\0') {
             // free last element memory
-            free(cmdhis[cmdhis_s - 1]);
+            free(cmdhis[CMD_HISTORY_SIZE - 1]);
             // move elements, ignore first which is reserved for current line edit
-            memmove(cmdhis + 2, cmdhis + 1, cmdhis_s*sizeof(char*)*2 - sizeof(char*)*2);
-            cmdhis[1] = strdup(buffer);
+            memmove(cmdhis + 2, cmdhis + 1, CMD_HISTORY_SIZE*sizeof(char*)*2 - sizeof(char*)*2);
+            cmdhis[1] = strdup(buff);
         }
         write(STDOUT_FILENO, "\r\n", sizeof("\r\n"));
-        return buffer;
+        return buff;
 }
 
 
@@ -446,7 +447,6 @@ int main(int argc, char **argv) {
     int i = 1; // loop index
     char* cmd; // command
     size_t cmd_len; // command length
-    int cmdhis_s = CMD_HISTORY_SIZE; // command history size
     char cmdhisfn[] = "./cmdhis.txt"; // command history file name
     char* cmdhis[CMD_HISTORY_SIZE] = {NULL}; // command history
 
@@ -458,7 +458,7 @@ int main(int argc, char **argv) {
     // restore command history
     fp = fopen(cmdhisfn, "a+");
     rewind(fp);
-    while (i < cmdhis_s) {
+    while (i < CMD_HISTORY_SIZE) {
         getline(&cmd, &cmd_len, fp);
         // if command available and file is not new
         if (strcmp(cmd, "\0") != 0) {
@@ -475,7 +475,7 @@ int main(int argc, char **argv) {
         if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {return -1;}
         prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
         // get command line, parse it, and execute
-        line = tshGetLine(prompt, prompt_l, cmdhis);
+        line = tshGetCommandLine(prompt, prompt_l, cmdhis);
         args = tsh_parseLine(line);
         tsh_parseCommand(args);
         // // free memory
@@ -483,7 +483,7 @@ int main(int argc, char **argv) {
         free(args);
         // save command history
         ftruncate(fileno(fp), 0);
-        for (int i = 1; i < cmdhis_s; i++) {
+        for (int i = 1; i < CMD_HISTORY_SIZE; i++) {
             // if command available in history store into file
             if (cmdhis[i] != NULL) {
                 fprintf(fp, "%s\n", cmdhis[i]);
