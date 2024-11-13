@@ -95,7 +95,7 @@ int tsh_executeCmd(char** cmd, int in, int out) {
 }
 
 
-int tsh_parseCommand(char** args) {
+int tshParseLine(char** args) {
     int pipefd[2]; // pipe file descriptor array
     int nextin = 0; // file descriptor to be used for next input stream
     int cmd_start = 0; // command string start index
@@ -173,7 +173,7 @@ int tsh_parseCommand(char** args) {
         return 0;
 }
 
-char** tsh_parseLine(char* line) {
+char** tshTokenizeLine(char* line) {
     int line_p = 0; // line buff position
     int args_s = 10; // args buff size
     int args_p = 0; // args buff position
@@ -282,7 +282,7 @@ char** tsh_parseLine(char* line) {
     }
 }
 
-char* tshGetCommandLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
+char* tshGetLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
     int window_width; // terminal window column width    
     int cmdhis_p = 0; // command history position
 
@@ -475,9 +475,9 @@ int main(int argc, char **argv) {
         if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {return -1;}
         prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
         // get command line, parse it, and execute
-        line = tshGetCommandLine(prompt, prompt_l, cmdhis);
-        args = tsh_parseLine(line);
-        tsh_parseCommand(args);
+        line = tshGetLine(prompt, prompt_l, cmdhis);
+        args = tshTokenizeLine(line);
+        tshParseLine(args);
         // // free memory
         free(line);
         free(args);
