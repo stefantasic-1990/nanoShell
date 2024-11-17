@@ -436,13 +436,13 @@ char* tshGetLine(char* prompt, int prompt_l, char* cmdhis[CMD_HISTORY_SIZE]) {
 
 
 int main(int argc, char **argv) {
-    char host[_POSIX_HOST_NAME_MAX]; // machine hostname
-    char cwd[PATH_MAX]; // current working directory
-    char prompt[50]; // prompt string
-    char** args; // command line tokens
-    char* line; // command line
-    int prompt_l; // prompt character length
-    FILE* fp; // file pointer
+    char host[_POSIX_HOST_NAME_MAX];
+    char cwd[PATH_MAX];
+    char prompt[50];
+    char** args;
+    char* line;
+    int prompt_l;
+    FILE* fp;
 
     int i = 1; // loop index
     char* cmd; // command
