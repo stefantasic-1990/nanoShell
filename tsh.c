@@ -444,15 +444,14 @@ int main(int argc, char **argv) {
     int prompt_l;
     FILE* fp;
 
-    int i = 1; // loop index
-    char* cmd; // command
-    size_t cmd_len; // command length
-    char cmdhisfn[] = "./cmdhis.txt"; // command history file name
-    char* cmdhis[CMD_HISTORY_SIZE] = {NULL}; // command history
+    int i = 1;
+    char* cmd;
+    size_t cmd_len;
+    char cmdhisfn[] = "./cmdhis.txt";
+    char* cmdhis[CMD_HISTORY_SIZE] = {NULL};
 
-    // enable raw terminal mode
+    // enable raw terminal mode and ensure that settings are restored at program exit
     if (enableRawTerminal() == -1) {return -1;}
-    // ensure that terminal settings are restored at shell exit
     if (atexit(disableRawTerminal) != 0) {return -1;}
 
     // restore command history
@@ -460,35 +459,30 @@ int main(int argc, char **argv) {
     rewind(fp);
     while (i < CMD_HISTORY_SIZE) {
         getline(&cmd, &cmd_len, fp);
-        // if command available and file is not new
         if (strcmp(cmd, "\0") != 0) {
-            // overwrite newline character and load
             cmd[strlen(cmd)-1] = '\0';
             cmdhis[i] = strdup(cmd);
         }
         i++;
     }
 
-    // main program loop
     do {
-        // assemble prompt string and get its length
         if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) == NULL) {return -1;}
         prompt_l = snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
-        // get command line, parse it, and execute
         line = tshGetLine(prompt, prompt_l, cmdhis);
         args = tshTokenizeLine(line);
         tshParseLine(args);
-        // // free memory
-        free(line);
-        free(args);
+
         // save command history
         ftruncate(fileno(fp), 0);
         for (int i = 1; i < CMD_HISTORY_SIZE; i++) {
-            // if command available in history store into file
             if (cmdhis[i] != NULL) {
                 fprintf(fp, "%s\n", cmdhis[i]);
                 fflush(fp);
             }
         }
+
+        free(line);
+        free(args);
     } while (1);
 }
