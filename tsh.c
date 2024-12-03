@@ -6,6 +6,15 @@
 #include <stdio.h>
 #include <termios.h>
 
+/**
+ * Function:  toggleOutputProcessing
+ * ----------------------
+ * Toggle terminal driver output processing on/off.
+ * 
+ * @return Returns 0 if successful and 1 if not.
+ * 
+ * This function toggles the OPOST terminal device driver setting on and off.
+ */
 int toggleOutputPostprocessing() {
     struct termios terminal_settings;
 
@@ -20,7 +29,18 @@ int toggleOutputPostprocessing() {
     return 0;
 }
 
-int tsh_executeCmd(char** cmd, int in, int out) {
+/**
+ * Function:  tshExecuteCmd
+ * ----------------------
+ * Execute a command given command arguments.
+ * 
+ * @param cmdArgs The command arguments array.
+ * @return Returns 0 if successful and 1 if not.
+ * 
+ * This function executes an individual command based on the given command arguments array.
+ * The first argument in the array is always assumed to be the command name and the rest its parameter arguments.
+ */
+int tshExecuteCmd(char** cmd, int in, int out) {
     int status;
     int pid;
 
@@ -55,6 +75,17 @@ int tsh_executeCmd(char** cmd, int in, int out) {
 }
 
 
+/**
+ * Function:  tshParseCmdArgs
+ * ----------------------
+ * Parse through the array of command line tokens and execute individual commands.
+ * 
+ * @param cmdArgs The array of command line tokens.
+ * @return Returns 0 if successful and 1 if not.
+ * 
+ * This function moves through the input array of command line tokens from left to right,
+ * executing the individual commands and implements batching, piping, redirection logic.
+ */
 int tshParseCmdArgs(char** cmdArgs) {
     int pipeFd[2];
     int nextInputFd = 0;
@@ -74,13 +105,13 @@ int tshParseCmdArgs(char** cmdArgs) {
             cmdArgLength = cmdArgEnd - cmdArgStart;
             cmd = calloc(cmdArgLength, sizeof(char*));
             memcpy(cmd, cmdArgs + cmdArgStart, cmdArgLength*sizeof(char*));
-            tsh_executeCmd(cmd, nextInputFd, 1);
+            tshExecuteCmd(cmd, nextInputFd, 1);
             goto end;
         } else if (strcmp(cmdArgs[cmdArgIndex], "&&") == 0 && strcmp(cmdArgs[cmdArgIndex + 1], "\0") != 0) {
             cmdArgLength = cmdArgEnd - cmdArgStart;
             cmd = calloc(cmdArgLength, sizeof(char*));
             memcpy(cmd, cmdArgs + cmdArgStart, cmdArgLength*sizeof(char*));
-            tsh_executeCmd(cmd, nextInputFd, 1);
+            tshExecuteCmd(cmd, nextInputFd, 1);
             nextInputFd = 0;
             cmdArgLength = 0;
             cmdArgEnd++;
@@ -90,7 +121,7 @@ int tshParseCmdArgs(char** cmdArgs) {
             cmd = calloc(cmdArgLength, sizeof(char*));
             memcpy(cmd, cmdArgs + cmdArgStart, cmdArgLength*sizeof(char*));
             pipe(pipeFd);
-            tsh_executeCmd(cmd, nextInputFd, pipeFd[1]);
+            tshExecuteCmd(cmd, nextInputFd, pipeFd[1]);
             close(pipeFd[1]);
             nextInputFd = pipeFd[0];
             cmdArgLength = 0;
@@ -102,7 +133,7 @@ int tshParseCmdArgs(char** cmdArgs) {
             memcpy(cmd, cmdArgs + cmdArgStart, cmdArgLength*sizeof(char*));
             fn = cmdArgs[cmdArgEnd + 1];
             fp = fopen(fn, "a+");
-            tsh_executeCmd(cmd, nextInputFd, fileno(fp));
+            tshExecuteCmd(cmd, nextInputFd, fileno(fp));
             fclose(fp);
             memmove(cmdArgs + 2, cmdArgs + cmdArgStart, cmdArgLength*sizeof(char*));
             cmdArgStart += 2;
@@ -121,6 +152,17 @@ int tshParseCmdArgs(char** cmdArgs) {
         return 0;
 }
 
+/**
+ * Function:  tshTokenizeCmdLine
+ * ----------------------
+ * Split the input command line into an array of command line tokens.
+ * 
+ * @param cmdLine The command line.
+ * @return An array of command line tokens.
+ * 
+ * This function moves through the input command line string from left to right,
+ * storing the individual tokens of the command line into an array and returns it.
+ */
 char** tshTokenizeCmdLine(char* cmdLine) {
     int cmdLinePosition = 0;
     int cmdArgsIndex = 0;
