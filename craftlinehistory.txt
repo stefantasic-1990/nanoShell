@@ -1,6 +1,10 @@
+git add .
+clear
+ls && ls
+clear
+ls
+hey
 yes
 hey
 clear
 ls
-p
-

@@ -9,11 +9,10 @@
 int toggleOutputPostprocessing() {
     struct termios terminal_settings;
 
-    // change terminal settings
     if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
+
     terminal_settings.c_oflag ^= (OPOST);
 
-    // set terminal settings
     if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings) == -1) {return -1;};
 
     return 0;
@@ -23,7 +22,6 @@ int tsh_executeCmd(char** cmd, int in, int out) {
     int status;
     int pid;
 
-    // check if command is builtin
     if (strcmp(cmd[0], "cd") == 0 && out == 1) {
         if (cmd[1] == NULL) {return 1;}
         if (chdir(cmd[1]) != 0) {return -1;}
@@ -61,80 +59,68 @@ int tsh_executeCmd(char** cmd, int in, int out) {
 }
 
 
-int tshParseLine(char** args) {
-    int pipefd[2]; // pipe file descriptor array
-    int nextin = 0; // file descriptor to be used for next input stream
-    int cmd_start = 0; // command string start index
-    int cmd_end = 0; // command string end index
-    int cmd_len = 0; // command length in arg
-    int i = 0; // loop index
-    char** cmd; // current command arg array
-    char* fn; // file name
-    FILE* fp; // file pointer
+int tshParseCmdArgs(char** cmdArgs) {
+    int pipeFd[2];
+    int nextInputFd = 0;
+    int cmdArgStart = 0;
+    int cmdArgEnd = 0;
+    int cmdArgLength = 0;
+    int cmdArgIndex = 0;
+    char** cmd;
+    char* fn;
+    FILE* fp;
 
-    // check if token array is empty
-    if (strcmp(args[0], "\0") == 0) {return 0;}
-
-    // turn off output postprocessing
+    if (strcmp(cmdArgs[0], "\0") == 0) {return 0;}
     toggleOutputPostprocessing();
 
-    // parse args array from left to right and figure out the next command
     while (1) {
-        // if  null string run command and stop parsing
-        if (strcmp(args[i], "\0") == 0) {
-            cmd_len = cmd_end - cmd_start;
-            cmd = calloc(cmd_len, sizeof(char*));
-            memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
-            tsh_executeCmd(cmd, nextin, 1);
+        if (strcmp(cmdArgs[cmdArgIndex], "\0") == 0) {
+            cmdArgLength = cmdArgEnd - cmdArgStart;
+            cmd = calloc(cmdArgLength, sizeof(char*));
+            memcpy(cmd, cmdArgs + cmdArgStart, cmdArgLength*sizeof(char*));
+            tsh_executeCmd(cmd, nextInputFd, 1);
             goto end;
-        // if && run command and do no piping or redirection
-        } else if (strcmp(args[i], "&&") == 0 && strcmp(args[i + 1], "\0") != 0) {
-            cmd_len = cmd_end - cmd_start;
-            cmd = calloc(cmd_len, sizeof(char*));
-            memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
-            tsh_executeCmd(cmd, nextin, 1);
-            nextin = 0;
-            cmd_len = 0;
-            cmd_end++;
-            cmd_start = cmd_end;
-        // if | run command and pipe to next
-        } else if (strcmp(args[i], "|") == 0 && strcmp(args[i + 1], "\0") != 0) {
-            cmd_len = cmd_end - cmd_start;
-            cmd = calloc(cmd_len, sizeof(char*));
-            memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
-            pipe(pipefd);
-            tsh_executeCmd(cmd, nextin, pipefd[1]);
-            close(pipefd[1]);
-            nextin = pipefd[0];
-            cmd_len = 0;
-            cmd_end++;
-            cmd_start = cmd_end;
-        // if > redirect output stream of current command to given file, run command
-        } else if (strcmp(args[i], ">") == 0 && strcmp(args[i+1], "\0") != 0) {
-            cmd_len = cmd_end - cmd_start;
-            cmd = calloc(cmd_len, sizeof(char*));
-            memcpy(cmd, args + cmd_start, cmd_len*sizeof(char*));
-            fn = args[cmd_end + 1];
+        } else if (strcmp(cmdArgs[cmdArgIndex], "&&") == 0 && strcmp(cmdArgs[cmdArgIndex + 1], "\0") != 0) {
+            cmdArgLength = cmdArgEnd - cmdArgStart;
+            cmd = calloc(cmdArgLength, sizeof(char*));
+            memcpy(cmd, cmdArgs + cmdArgStart, cmdArgLength*sizeof(char*));
+            tsh_executeCmd(cmd, nextInputFd, 1);
+            nextInputFd = 0;
+            cmdArgLength = 0;
+            cmdArgEnd++;
+            cmdArgStart = cmdArgEnd;
+        } else if (strcmp(cmdArgs[cmdArgIndex], "|") == 0 && strcmp(cmdArgs[cmdArgIndex + 1], "\0") != 0) {
+            cmdArgLength = cmdArgEnd - cmdArgStart;
+            cmd = calloc(cmdArgLength, sizeof(char*));
+            memcpy(cmd, cmdArgs + cmdArgStart, cmdArgLength*sizeof(char*));
+            pipe(pipeFd);
+            tsh_executeCmd(cmd, nextInputFd, pipeFd[1]);
+            close(pipeFd[1]);
+            nextInputFd = pipeFd[0];
+            cmdArgLength = 0;
+            cmdArgEnd++;
+            cmdArgStart = cmdArgEnd;
+        } else if (strcmp(cmdArgs[cmdArgIndex], ">") == 0 && strcmp(cmdArgs[cmdArgIndex+1], "\0") != 0) {
+            cmdArgLength = cmdArgEnd - cmdArgStart;
+            cmd = calloc(cmdArgLength, sizeof(char*));
+            memcpy(cmd, cmdArgs + cmdArgStart, cmdArgLength*sizeof(char*));
+            fn = cmdArgs[cmdArgEnd + 1];
             fp = fopen(fn, "a+");
-            tsh_executeCmd(cmd, nextin, fileno(fp));
+            tsh_executeCmd(cmd, nextInputFd, fileno(fp));
             fclose(fp);
-            memmove(args + 2, args + cmd_start, cmd_len*sizeof(char*));
-            cmd_start += 2;
-            cmd_end++;
-        // if < redirect input stream of current command to given file, run command
-        } else if (strcmp(args[i], "<") == 0) {
+            memmove(cmdArgs + 2, cmdArgs + cmdArgStart, cmdArgLength*sizeof(char*));
+            cmdArgStart += 2;
+            cmdArgEnd++;
+        } else if (strcmp(cmdArgs[cmdArgIndex], "<") == 0) {
             continue;
-        // add arg to current command
         } else {
-            cmd_end++;
-            cmd_len++;
+            cmdArgEnd++;
+            cmdArgLength++;
         }
-        // increment loop index
-        i++;
+        cmdArgIndex++;
     }
 
     end:
-        // turn on output postprocessing
         toggleOutputPostprocessing();
         return 0;
 }
@@ -245,7 +231,8 @@ int main(int argc, char **argv) {
         
         cmdLine = craftLine(prompt);
         cmdArgs = tshTokenizeCmdLine(cmdLine);
-        tshParseLine(cmdArgs);
+        tshParseCmdArgs(cmdArgs);
+        
         free(cmdLine);
         free(cmdArgs);
     } while (1);
