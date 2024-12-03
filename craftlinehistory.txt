@@ -1,0 +1,4 @@
+clear
+ls
+what's up
+hey
