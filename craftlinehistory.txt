@@ -1,4 +1,6 @@
+yes
+hey
 clear
 ls
-what's up
-hey
+p
+

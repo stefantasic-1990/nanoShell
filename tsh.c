@@ -139,111 +139,92 @@ int tshParseLine(char** args) {
         return 0;
 }
 
-char** tshTokenizeLine(char* line) {
-    int line_p = 0; // line buff position
-    int args_s = 10; // args buff size
-    int args_p = 0; // args buff position
-    int arg_s = 20; // arg buff size
-    int arg_p = 0; // arg buff position
-    int qmode = 0; // quoted mode flag 
-    char** args = calloc(args_s, sizeof(char*));
+char** tshTokenizeCmdLine(char* cmdLine) {
+    int cmdLinePosition = 0;
+    int cmdArgsIndex = 0;
+    int cmdArgsSize = 10;
+    int argPosition = 0;
+    int argSize = 20;
+    int quoteModeFlag = 0;
+    char** cmdArgs = calloc(cmdArgsSize, sizeof(char*));
 
     while (1) {
-        // allocate space for next token
-        args[args_p] =  calloc(arg_s, sizeof(char));
-
-        // parse next token
+        cmdArgs[cmdArgsIndex] = calloc(argSize, sizeof(char));
         while (1) {
-            // if end of line is reached
-            switch (line[line_p]) {
+            switch (cmdLine[cmdLinePosition]) {
             case '\0':
-                // if we are building a token null-terminate it
-                if (arg_p != 0) {
-                    args[args_p][arg_p] = '\0';
-                    args[args_p+1] = "\0";
-                } else {args[args_p] = "\0";}
-                return args;
+                if (argPosition != 0) {
+                    cmdArgs[cmdArgsIndex][argPosition] = '\0';
+                    cmdArgs[cmdArgsIndex+1] = "\0";
+                } else {cmdArgs[cmdArgsIndex] = "\0";}
+                return cmdArgs;
             case '\"':
-                // change quoted mode
-                qmode = 1 - qmode;
-                line_p++;
+                quoteModeFlag = 1 - quoteModeFlag;
+                cmdLinePosition++;
                 break;
-            // // if escape character
             case '\\':
-                // get next character and determine escape sequence
-                // we ignore the escape character by itself
-                line_p++;
-                switch(line[line_p]) {
+                cmdLinePosition++;
+                switch(cmdLine[cmdLinePosition]) {
                 case 'n':
-                    args[args_p][arg_p] = '\r';
-                    arg_p++;
-                    args[args_p][arg_p] = '\n';
-                    arg_p++;
-                    line_p++;
+                    cmdArgs[cmdArgsIndex][argPosition] = '\r';
+                    argPosition++;
+                    cmdArgs[cmdArgsIndex][argPosition] = '\n';
+                    argPosition++;
+                    cmdLinePosition++;
                     break;
                 case '\\':
-                    args[args_p][arg_p] = '\\';
-                    arg_p++;
-                    line_p++;
+                    cmdArgs[cmdArgsIndex][argPosition] = '\\';
+                    argPosition++;
+                    cmdLinePosition++;
                     break;
                 case '\"':
-                    args[args_p][arg_p] = '\"';
-                    arg_p++;
-                    line_p++;
+                    cmdArgs[cmdArgsIndex][argPosition] = '\"';
+                    argPosition++;
+                    cmdLinePosition++;
                     break;
                 case '\'':
-                    args[args_p][arg_p] = '\'';
-                    arg_p++;
-                    line_p++;
+                    cmdArgs[cmdArgsIndex][argPosition] = '\'';
+                    argPosition++;
+                    cmdLinePosition++;
                     break;
                 case 'r':
-                    args[args_p][arg_p] = '\r';
-                    arg_p++;
-                    line_p++;
+                    cmdArgs[cmdArgsIndex][argPosition] = '\r';
+                    argPosition++;
+                    cmdLinePosition++;
                     break;
                 }
                 break;
-            // if space character
             case ' ':
-                // only treat as a token separator if not in quoted mode
-                // otherwise we skip down to default and treat as regular character
-                if (qmode == 0) {
-                    // if we are building a token null-terminate it, set next token to NULL
-                    if (arg_p != 0) {
-                        args[args_p][arg_p] = '\0';
-                        line_p++;
+                if (quoteModeFlag == 0) {
+                    if (argPosition != 0) {
+                        cmdArgs[cmdArgsIndex][argPosition] = '\0';
+                        cmdLinePosition++;
                         goto nextToken;
                         }
-                    // if we are not building a token, ignore the white space
-                    line_p++;
+                    cmdLinePosition++;
                     break;
                 }
-                // if we are building a token null-terminate it, set next token to NULL
-            // if regular character
             default:
-                // add character to token string
-                args[args_p][arg_p] = line[line_p];
-                line_p++;
-                arg_p++;
+                cmdArgs[cmdArgsIndex][argPosition] = cmdLine[cmdLinePosition];
+                cmdLinePosition++;
+                argPosition++;
             }
-            // reallocate more token characters if required
-            if (arg_p >= arg_s) {
-            arg_s += arg_s;
-            args[args_p] = realloc(args[args_p], arg_s * sizeof(char));
-            if (!args[args_p]) {return NULL;}
+
+            if (argPosition >= argSize) {
+            argSize += argSize;
+            cmdArgs[cmdArgsIndex] = realloc(cmdArgs[cmdArgsIndex], argSize * sizeof(char));
+            if (!cmdArgs[cmdArgsIndex]) {return NULL;}
             }  
         }
 
         nextToken:
-            // set variables for next token string
-            args_p++;
-            arg_p = 0;
+            cmdArgsIndex++;
+            argPosition = 0;
 
-            // reallocate more token pointers if required
-            if (args_p >= args_s) {
-            args_s += args_s;
-            args = realloc(args, args_s * sizeof(char*));
-            if (!args) {return NULL;}
+            if (cmdArgsIndex >= cmdArgsSize) {
+            cmdArgsSize += cmdArgsSize;
+            cmdArgs = realloc(cmdArgs, cmdArgsSize * sizeof(char*));
+            if (!cmdArgs) {return NULL;}
             } 
     }
 }
@@ -252,8 +233,8 @@ int main(int argc, char **argv) {
     char host[_POSIX_HOST_NAME_MAX];
     char cwd[PATH_MAX];
     char prompt[50];
-    char** args;
-    char* line;
+    char* cmdLine;
+    char** cmdArgs;
 
     do {
         if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) != NULL) {
@@ -262,11 +243,10 @@ int main(int argc, char **argv) {
             return -1;
         }
         
-        line = craftLine(prompt);
-        args = tshTokenizeLine(line);
-        tshParseLine(args);
-
-        free(line);
-        free(args);
+        cmdLine = craftLine(prompt);
+        cmdArgs = tshTokenizeCmdLine(cmdLine);
+        tshParseLine(cmdArgs);
+        free(cmdLine);
+        free(cmdArgs);
     } while (1);
 }
