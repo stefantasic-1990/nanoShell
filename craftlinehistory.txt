@@ -1,3 +1,6 @@
+ls && ls
+git push
+git commit -m "clean up tshParseCmdArgs"
 git add .
 clear
 ls && ls
@@ -5,6 +8,3 @@ clear
 ls
 hey
 yes
-hey
-clear
-ls

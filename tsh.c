@@ -9,11 +9,13 @@
 int toggleOutputPostprocessing() {
     struct termios terminal_settings;
 
-    if (tcgetattr(STDIN_FILENO, &terminal_settings) == -1) {return 1;} 
-
-    terminal_settings.c_oflag ^= (OPOST);
-
-    if (tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings) == -1) {return -1;};
+    if (isatty(STDIN_FILENO)) {
+        tcgetattr(STDIN_FILENO, &terminal_settings);
+        terminal_settings.c_oflag ^= (OPOST);
+        tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings)
+    } else {
+        return 1;
+    }
 
     return 0;
 }
@@ -30,10 +32,8 @@ int tsh_executeCmd(char** cmd, int in, int out) {
         exit(EXIT_SUCCESS);
     }
 
-    // create child process
     pid = fork();
     if (pid == 0) {
-        // reidirect input/output
         if (in != 0) {
             dup2(in, 0);
             close (in);
@@ -42,15 +42,11 @@ int tsh_executeCmd(char** cmd, int in, int out) {
             dup2(out, 1);
             close(out);
         }
-        // child process execute command
         execvp(cmd[0], cmd);
-        // child process exits if execvp can't find the executable in the path
         exit(EXIT_FAILURE);
     } else if (pid < 0 ) {
-        // fork error
         return -1;
     } else {
-        // parent process wait for child
         do {waitpid(pid, &status, WUNTRACED);}
         while (!WIFEXITED(status) && !WIFSIGNALED(status));
     }
