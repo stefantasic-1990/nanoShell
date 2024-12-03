@@ -12,7 +12,7 @@ int toggleOutputPostprocessing() {
     if (isatty(STDIN_FILENO)) {
         tcgetattr(STDIN_FILENO, &terminal_settings);
         terminal_settings.c_oflag ^= (OPOST);
-        tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings)
+        tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminal_settings);
     } else {
         return 1;
     }
