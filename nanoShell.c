@@ -4,7 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/wait.h>
 #include <termios.h>
+#include <limits.h>
 
 /**
  * Function:  toggleOutputProcessing
@@ -76,7 +78,7 @@ int tshExecuteCmd(char** cmd, int in, int out) {
 
 
 /**
- * Function:  tshParseCmdArgs
+ * Function:  tshParseCmdLine
  * ----------------------
  * Parse through the array of command line tokens and execute individual commands.
  * 
@@ -86,7 +88,7 @@ int tshExecuteCmd(char** cmd, int in, int out) {
  * This function moves through the input array of command line tokens from left to right,
  * executing the individual commands and implements batching, piping, redirection logic.
  */
-int tshParseCmdArgs(char** cmdArgs) {
+int tshParseCmdLine(char** cmdArgs) {
     int pipeFd[2];
     int nextInputFd = 0;
     int cmdArgStart = 0;
@@ -253,23 +255,64 @@ char** tshTokenizeCmdLine(char* cmdLine) {
     }
 }
 
+char* getHostname(void) {
+    long hostnameMax = sysconf(_SC_HOST_NAME_MAX); // get max hostname length at runtime if able
+    if (hostnameMax == -1) hostnameMax = 255; // fallback to POSIX minimal guarantee
+    size_t hostnameMaxLen = (size_t)hostnameMax+1;
+
+    char* hostname = malloc(hostnameMaxLen);
+    if (!hostname) return NULL;
+
+    // if gethostname failed or returned an empty string use default "unknown"
+    if (gethostname(hostname, hostnameMaxLen) != 0 || hostname[0] == '\0') {
+        strcpy(hostname, "unknown");
+    };
+    hostname[hostnameMax-1] = '\0'; // ensure null termination
+
+    return hostname;
+}
+
+char* getCwd(void) {
+
+}
+
+char* getUser(void) {
+
+}
+
+char* buildPrompt(void) {
+            // try to get the hostname, otherwise use default "unknown"
+        if (gethostname(hostname, sizeof(hostname)) == -1) {
+            strncpy(hostname, "unknown", sizeof(hostname));
+            hostname[sizeof(hostname)-1] = '\0';
+        }
+
+        // try to get the current working directory, otherwise use default "unknown"
+        if (getcwd(cwd, sizeof(cwd)) == NULL) {
+            strncpy(cwd, "unknown", sizeof(cwd));
+            cwd[sizeof(cwd)-1] = '\0';
+        }
+        username = getlogin();
+        if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) != NULL) {
+            snprintf(prompt, sizeof(prompt), "%s@%s %s: ", username, host, cwd);
+        } else {
+            return -1;
+        }
+}
+
 int main(int argc, char **argv) {
-    char host[_POSIX_HOST_NAME_MAX];
+    char hostname[HOST_NAME_MAX+1];
     char cwd[PATH_MAX];
-    char prompt[50];
+    char* username;
+    char prompt[150];
     char* cmdLine;
     char** cmdArgs;
 
     do {
-        if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) != NULL) {
-            snprintf(prompt, 50, "%s@%s %s: ", getlogin(), host, strrchr(cwd, '/'));
-        } else {
-            return -1;
-        }
-        
+        prompt = buildPrompt();
         cmdLine = craftLine(prompt);
         cmdArgs = tshTokenizeCmdLine(cmdLine);
-        tshParseCmdArgs(cmdArgs);
+        tshParseCmdLine(cmdArgs);
         
         free(cmdLine);
         free(cmdArgs);

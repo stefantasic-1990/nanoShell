@@ -167,7 +167,7 @@ char* craftLine(char* prompt) {
 
     // logical line state.
     int lineLength = 0;
-    int lineCursorPosition = 0;   // Cursor index in lineBuffer.
+    int lineCursorPosition = 0;   // cursor index in lineBuffer.
     int lineDisplayOffset = 0;    // horizontal scroll offset; line is printed on screen starting here.
     int lineDisplayLength = 0;    // visible chars available on screen after prompt is printed; depends on window size.
 
