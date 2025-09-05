@@ -1,6 +1,8 @@
-# turtleshell (tsh): a simple shell program in C
+# nanoShell
 
-Personal project implementing a basic shell program in C.
+## To-do
+
+- [ ] Non-interactive mode: only render prompts and enable `craftLine` when `isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)`. Fall back to simple command execution for non-interactive/programmatic input.
 
 ## Features
 
