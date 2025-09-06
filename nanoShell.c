@@ -327,27 +327,13 @@ char* buildPrompt(void) {
 
     size_t promptLen = strlen(hostname) + strlen(username) + strlen(cwd) + 1;
     char* prompt = malloc(promptLen);
+    snprintf(prompt, promptLen, "%s@%s %s: ", username, hostname, cwd);
 
     free(hostname);
     free(username);
     free(cwd);
 
-
-
-    snprintf(prompt, sizeof(prompt), "%s@%s %s: ", username, host, cwd);
-
-
-        // try to get the current working directory, otherwise use default "unknown"
-        if (getcwd(cwd, sizeof(cwd)) == NULL) {
-            strncpy(cwd, "unknown", sizeof(cwd));
-            cwd[sizeof(cwd)-1] = '\0';
-        }
-        username = getlogin();
-        if (gethostname(host, sizeof(host)) == -1 || getcwd(cwd, sizeof(cwd)) != NULL) {
-            snprintf(prompt, sizeof(prompt), "%s@%s %s: ", username, host, cwd);
-        } else {
-            return -1;
-        }
+    return prompt
 }
 
 int main(int argc, char **argv) {
