@@ -284,6 +284,7 @@ char* getCwd(void) {
     const size_t CWD_LEN_CAP = 8*1024*1024;
     size_t cwdLenMax;
 
+    // initialize buffer state
     cwd = malloc(CWD_LEN_INI);
     if (!cwd) return NULL;
     cwdLenMax = CWD_LEN_INI;
@@ -311,6 +312,7 @@ char* getCwd(void) {
             return NULL;
         }
 
+        // update buffer state
         cwdLenMax = newCwdLenMax;
         cwd = newCwd;
     }
