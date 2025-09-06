@@ -321,10 +321,12 @@ char* getCwd(void) {
 }
 
 char* buildPrompt(void) {
+    // get prompt parameter values
     char* hostname = getHost();
     char* username = getUser();
     char* cwd = getCwd();
 
+    // build prompt
     size_t promptLen = strlen(hostname) + strlen(username) + strlen(cwd) + 1;
     char* prompt = malloc(promptLen);
     snprintf(prompt, promptLen, "%s@%s %s: ", username, hostname, cwd);
