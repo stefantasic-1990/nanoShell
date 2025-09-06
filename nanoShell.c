@@ -7,6 +7,8 @@
 #include <sys/wait.h>
 #include <termios.h>
 #include <limits.h>
+#include <errno.h>
+#include <stdint.h>
 
 /**
  * Function:  toggleOutputProcessing
@@ -255,7 +257,7 @@ char** tshTokenizeCmdLine(char* cmdLine) {
     }
 }
 
-char* getHostname(void) {
+char* getHost(void) {
     long hostnameMax = sysconf(_SC_HOST_NAME_MAX); // get max hostname length at runtime if able
     if (hostnameMax == -1) hostnameMax = 255; // fallback to POSIX minimal guarantee
     size_t hostnameMaxLen = (size_t)hostnameMax+1;
@@ -267,25 +269,71 @@ char* getHostname(void) {
     if (gethostname(hostname, hostnameMaxLen) != 0 || hostname[0] == '\0') {
         strcpy(hostname, "unknown");
     };
-    hostname[hostnameMax-1] = '\0'; // ensure null termination
+    hostname[hostnameMaxLen-1] = '\0'; // ensure null termination
 
     return hostname;
-}
-
-char* getCwd(void) {
-
 }
 
 char* getUser(void) {
 
 }
 
-char* buildPrompt(void) {
-            // try to get the hostname, otherwise use default "unknown"
-        if (gethostname(hostname, sizeof(hostname)) == -1) {
-            strncpy(hostname, "unknown", sizeof(hostname));
-            hostname[sizeof(hostname)-1] = '\0';
+char* getCwd(void) {
+    char* cwd;
+    const size_t CWD_LEN_INI = 256;
+    const size_t CWD_LEN_CAP = 8*1024*1024;
+    size_t cwdLenMax;
+
+    cwd = malloc(CWD_LEN_INI);
+    if (!cwd) return NULL;
+    cwdLenMax = CWD_LEN_INI;
+
+    while (getcwd(cwd, cwdLenMax) == NULL) {
+        // check if error is due to something other than passed buffer size
+        if (errno != ERANGE) {
+            free(cwd);
+            return NULL;
         }
+
+        // check that the buffer won't overflow when resized
+        if (cwdLenMax > SIZE_MAX/2 || cwdLenMax > CWD_LEN_CAP/2) {
+            free(cwd);
+            return NULL;
+        }
+
+        // resize buffer
+        size_t newCwdLenMax = cwdLenMax*2;
+        char* newCwd = realloc(cwd, newCwdLenMax);
+
+        // check that realloc succeeded
+        if (!newCwd) {
+            free(cwd);
+            return NULL;
+        }
+
+        cwdLenMax = newCwdLenMax;
+        cwd = newCwd;
+    }
+
+    return cwd;
+}
+
+char* buildPrompt(void) {
+    char* hostname = getHost();
+    char* username = getUser();
+    char* cwd = getCwd();
+
+    size_t promptLen = strlen(hostname) + strlen(username) + strlen(cwd) + 1;
+    char* prompt = malloc(promptLen);
+
+    free(hostname);
+    free(username);
+    free(cwd);
+
+
+
+    snprintf(prompt, sizeof(prompt), "%s@%s %s: ", username, host, cwd);
+
 
         // try to get the current working directory, otherwise use default "unknown"
         if (getcwd(cwd, sizeof(cwd)) == NULL) {
@@ -301,19 +349,11 @@ char* buildPrompt(void) {
 }
 
 int main(int argc, char **argv) {
-    char hostname[HOST_NAME_MAX+1];
-    char cwd[PATH_MAX];
-    char* username;
-    char prompt[150];
-    char* cmdLine;
-    char** cmdArgs;
-
     do {
-        prompt = buildPrompt();
-        cmdLine = craftLine(prompt);
-        cmdArgs = tshTokenizeCmdLine(cmdLine);
-        tshParseCmdLine(cmdArgs);
-        
+        char* prompt = buildPrompt(); // build shell prompt
+        char* cmdLine = craftLine(prompt); // get command line
+        char** cmdArgs = tshTokenizeCmdLine(cmdLine); // break command line into tokens
+        tshParseCmdLine(cmdArgs); // execute command line
         free(cmdLine);
         free(cmdArgs);
     } while (1);
